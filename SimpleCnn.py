@@ -37,8 +37,17 @@ def read_data():
 
 class ImgDataset(Dataset):
     def __init__(self):
-        df = pd.read_csv('Projektarbete_PE2I/Patientlista-avid.csv')
-        self.labels = df.Label
+        df = pd.read_csv('Projektarbete_PE2I/Patientlista-avid.csv',na_values= '?')
+        print(df.Label)
+        labels = df.Label.astype(np.int64) #Integer labels
+        one_hot_encode = list()
+        for value in labels:
+            letter = [0 for _ in range(0,6)]
+            letter[value] = 1
+            one_hot_encode.append(letter)
+        
+
+        self.labels = np.array(one_hot_encode)
         self.samples = read_data() #Better to let samples be the pathway, more memory efficiency
     
     def __len__(self):
@@ -50,27 +59,41 @@ class ImgDataset(Dataset):
         return X,Y
 
 def network():
+    from keras.layers import Dense, Activation, Flatten
+
     model = keras.models.Sequential()
 
     model.add(Conv3D(1, kernel_size=(3,3,3), input_shape = (128, 128, 128, 1)))
-
-
+    model.add(Flatten())
+    model.add(Dense(6,input_dim = 126*126*126))
+    model.add(Activation('softmax'))
+    model.summary()
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
+def resNet():
+    import torchvision.models as models
+    resnet18 = models.resnet18(pretrained=True)
+    return resnet18
+
 if __name__ == "__main__":
+    from keras.utils import to_categorical
+
     dataset = ImgDataset()
     indices = [0,5,12,18,23]
     test_data = dataset[indices]
-    train_data = dataset[~indices]
+    train_data = dataset[[1,2,3,4,6,7,8,9,10,11,14,15,16,17,19,20,21,22,24,25,26,27]]
 
     x_train = train_data[:][0]
     y_train = train_data[:][1]
+    print(y_train.shape)
 
     x_test = test_data[:][0]
     y_test = test_data[:][1]
-
+    #y_test = to_categorical(y_test)
+    print(y_test.shape)
     CNN = network()
+    CNN.fit(x_train,y_train,validation_data=(x_test,y_test),epochs  = 3)
 
     pass
