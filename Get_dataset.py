@@ -11,8 +11,9 @@ from nibabel import ecat
 
 
 class ScanDataSet(Dataset):
-    def __init__(self, data_root,filetype):
-        self.data_root = data_root
+    def __init__(self, image_root,label_root,filetype):
+        self.image_root = image_root
+        self.label_root = label_root
         self.filetype = filetype #indicates which kind of scan, use ""
         self.samples = []
         
@@ -29,7 +30,7 @@ class ScanDataSet(Dataset):
     def _init_dataset(self):
         
         #Read the disaese
-        tmp_df = pd.read_csv('Projektarbete_PE2I/Patientlista-avid.csv')
+        tmp_df = pd.read_csv(self.label_root)
         
         labels = tmp_df.Label.astype(np.int64) #Integer labels
         one_hot_encode = list()
@@ -42,7 +43,7 @@ class ScanDataSet(Dataset):
         
         #Reads the scans
         listFilesECAT = [] #create an empty list
-        for dirName, subdirList, fileList in os.walk(self.data_root):
+        for dirName, subdirList, fileList in os.walk(self.image_root):
             for filename in fileList:
                 if self.filetype in filename.lower(): #check wheter the file's ECAT
                     listFilesECAT.append(os.path.join(dirName, filename))
@@ -58,5 +59,7 @@ class ScanDataSet(Dataset):
             images = ecat.load(listFilesECAT[nr]).get_frame(0)
             images = images[...,np.newaxis]
             self.samples.append((images,diseases[nr,:]))
+                
+
                 
     
