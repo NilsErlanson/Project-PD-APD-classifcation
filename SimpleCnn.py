@@ -10,10 +10,12 @@ import keras
 from keras.layers import Conv3D
 import numpy as np
 import sklearn
+import Get_dataset
+import visFuncs
 
 
 def read_data():
-    data_path = 'Projektarbete_PE2I/Parameterbilder/ecat'
+    data_path = 'projectfiles_PE2I/scans/ecat_scans'
 
     #Collect all ecat images
     patientList = [] #create an empty list
@@ -37,7 +39,7 @@ def read_data():
 
 class ImgDataset(Dataset):
     def __init__(self):
-        df = pd.read_csv('Projektarbete_PE2I/Patientlista-avid.csv',na_values= '?')
+        df = pd.read_csv('projectfiles_PE2I/patientlist.csv',na_values= '?')
         print(df.Label)
         labels = df.Label.astype(np.int64) #Integer labels
         one_hot_encode = list()
@@ -79,8 +81,14 @@ def resNet():
 
 if __name__ == "__main__":
     from keras.utils import to_categorical
-
-    dataset = ImgDataset()
+    image_root = 'projectfiles_PE2I/scans/ecat_scans/'
+    label_root = 'projectfiles_PE2I/patientlist.csv'
+    filetype = "1.v"
+   # dataset = Get_dataset.ScanDataSet(image_root,label_root,filetype)  
+    dataset  = ImgDataset()
+    # sample = dataset.__getitem__(5)
+    # visFuncs.show_scan(sample)
+    # visFuncs.scroll_slices(sample)
     indices = [0,5,12,18,23]
     test_data = dataset[indices]
     train_data = dataset[[1,2,3,4,6,7,8,9,10,11,14,15,16,17,19,20,21,22,24,25,26,27]]
