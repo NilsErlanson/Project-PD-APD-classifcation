@@ -80,6 +80,27 @@ def noise_dataset(original_dataset):
     noise_dataset  = numpydataset.numpy_to_dataset(noisenp,labelsnp)
     return noise_dataset
 
+def rotate_dataset(original_dataset):
+    #Fetch reference sample
+    scan, dis = original_dataset[0]
+    shape = scan.shape
+    rotatep = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
+    labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
+    print(rotatep.shape)
+    print(labelsnp.shape)
+
+    for i in range(len(original_dataset)):
+        scan,dis = original_dataset[i]
+        rand_rot_z=np.random.uniform(-20,20)
+        rand_rot_x=np.random.uniform(-5,5)  
+        rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(scan[:,:,:,0], rand_rot_z, axes = (0,1), reshape = False) #SUVr
+        rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(scan[:,:,:,1], rand_rot_z, axes = (0,1), reshape = False) #rCBF
+        rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,0], rand_rot_x, axes = (1,2), reshape = False) #SUVr
+        rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,1], rand_rot_x, axes = (1,2), reshape = False) #rCBF 
+        labelsnp[i,:] = dis
+    rotate_dataset  = numpydataset.numpy_to_dataset(rotatep,labelsnp)
+    return rotate_dataset
+
 def normalize_image(images, mean_SUVR, std_SUVR, mean_rCBF, std_rCBF):
     images[:,:,:,0] = (images[:,:,:,0] - mean_SUVR) / std_SUVR
     images[:,:,:,1] = (images[:,:,:,1] - mean_rCBF) / std_rCBF
@@ -171,21 +192,22 @@ class ScanDataSet(Dataset):
             #Load the rCBF image
             images[:,:,:,1] = ecat.load(listFilesECAT_rCBF[nr]).get_frame(0)
 
-       #     rotated_images = rotate_image_around_x(images)
+            rotated_images = rotate_image_around_x(images)
             
             #Store all of the cropped images to be able to calculate the statistics before normalization
-        #    cropped_images[nr,:,:,:,:] = crop_image(rotated_images)
-            
+            cropped_images[nr,:,:,:,:] = crop_image(rotated_images)
+            self.samples.append((cropped_images[nr,:,:,:,:], diseases[nr,:]))
+
 
         #  Calculate statistics in order to be able to normalize the dataset
        # mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_var(cropped_images) 
 
         # Normalize the data and append them into samples with the corresponding label
-        for nr in range(np.size(listFilesECAT_SUVR)):
+        #for nr in range(np.size(listFilesECAT_SUVR)):
         #    normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
 
             #Append the preprocessed data into samples
-            self.samples.append((images, diseases[nr,:]))
+            #self.samples.append((images, diseases[nr,:]))
 
         print("Done")
 
