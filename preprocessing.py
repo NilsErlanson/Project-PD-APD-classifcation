@@ -10,6 +10,9 @@ import sklearn
 import Get_dataset
 import visFuncs
 
+# To rotate the images
+import scipy.ndimage
+
 #To transform the images
 import torchvision
 
@@ -54,28 +57,39 @@ def calculate_mean_var(dataset):
     #Fetch a reference sample to be able to create matrices of the right size
     sample = dataset.__getitem__(0)
 
-    print((len(dataset),sample[0].shape[0],sample[0].shape[1],sample[0].shape[2]))
+    image = sample[0][:,:,:,0]
+    plt.imshow(image[64,:,:]) 
+    plt.show()
+
+    shape = sample[0].shape
+    print((len(dataset),shape[0], shape[1], shape[2]))
     
     # Uses the reference images sizes
-    SUVr = np.zeros((len(dataset),sample[0].shape[0],sample[0].shape[1],sample[0].shape[2]))
-    rCBF = np.zeros((len(dataset),sample[1].shape[0],sample[1].shape[1],sample[1].shape[2]))
+    images = np.zeros((len(dataset), shape[0], shape[1], shape[2], 2))
+    print(images.shape)
 
-    for i in range(0,len(dataset)): # or i, image in enumerate(dataset)
-        suvr_scan, rcbf_scan, label = dataset[i] # or whatever your dataset returns
-        print(suvr_scan.shape)
-        SUVr[i,:,:,:] = suvr_scan.squeeze()
-        rCBF[i,:,:,:] = rcbf_scan.squeeze()
+    for i in range(0, len(dataset)): # or i, image in enumerate(dataset)
+        sample = dataset.__getitem__(i) # or whatever your dataset returns
+        print("In loop SUVr.shape (SCANS): ", sample[0][:,:,:,0].shape)
 
+        images[i,:,:,:,0] = sample[0][:,:,:,0] #SUVr
+        images[i,:,:,:,1] = sample[0][:,:,:,1] #rCBF
 
-    return (SUVr.mean(), np.sqrt(SUVr.var()), rCBF.mean(), np.sqrt(rCBF.var()))
+    return (images[:,:,:,:,0].mean(), np.sqrt(images[:,:,:,:,0].var()), images[:,:,:,:,1].mean(), np.sqrt(images[:,:,:,:,1].var()))
 
 
 def find_centered_pixel(sample):
-    image = np.squeeze(sample[0])
+    #image = np.squeeze(sample[0])
+    image = sample[0][:,:,:,0] #SUVr
 
     val = np.max(image) - 0.15*np.max(image)  # HARD-CODED, USE PERCENTAGE INSTEAD? np.max(image) - 0.1*np.max(image)
-
     pixel_position = np.where(image > val)
+
+    #print("val: ", val, "pixel_pos: ", pixel_position)
+
+    #val = np.max(sample[0][:,:,0:100,0]) - np.max(sample[0][:,:,0:100,0]) * 0.35 # SUVR IMAGE
+    #pixel_position  = np.where( sample[0][:,:,0:100,1] > val )
+
     x = pixel_position[0][:]
     y = pixel_position[1][:]
     z = pixel_position[2][:]
@@ -120,6 +134,10 @@ def rotate_image(sample):
 
     return rotated_sample
 
+def noise_dataset(orginial_dataset, transform):
+
+
+    return noise_dataset
 
 if __name__ == "__main__":
     image_root = 'projectfiles_PE2I/scans/ecat_scans/'
@@ -128,32 +146,51 @@ if __name__ == "__main__":
     filetype_rCBF = "rCBF.v"
 
     original_dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)
-    sample = original_dataset.__getitem__(3)
-    print(find_centered_pixel(sample))
-    visFuncs.show_scan(sample,0)
+    sample = original_dataset.__getitem__(0)
+    #print(find_centered_pixel(sample))
+    #visFuncs.show_scan(sample,0)
     
     # *************** PREPROCESSING **********************
-    nrPixelscrop_z = 40
+    pixelstop = 30
+    pixelsbottom = 50
+    degrees = 20
     # Preprocessing stage: rotate crop, normalize
     preprocess = torchvision.transforms.Compose([
-        #Get_dataset.Rotate_around_x(),
-        Get_dataset.Crop(nrPixelscrop_z)
+        Get_dataset.Rotate_around_x(degrees),
+        Get_dataset.Crop(pixelstop, pixelsbottom)
     ])
 
+    #Only rotation
+    #preprocess = Get_dataset.Rotate_around_x(degrees)
+    #Only cropping
+    preprocess = Get_dataset.Crop(pixelstop, pixelsbottom)
+    
+    #With preprocess
+    #dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF, preprocess)
+    #Without preprocess  
+    dataset1 = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)  
+    #sample = dataset.__getitem__(0)
+    dataset2 = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)  
+    #print("sample[0].shape: ", sample[0].shape, "sample[1].shape: ", sample[1].shape)
+
+
     # Calculate statistics of the rotated and cropped images to be able to normalize
-    dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF, preprocess)  
-    sample = dataset.__getitem__(0)
-    print(sample[0].shape[0])
+    #dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF, preprocess)  
+    #sample = dataset.__getitem__(0)
+    #print(sample[0].shape[0])
 
-
+    #Show the image
+    #image = sample[0][:,:,:,0]
+    #plt.imshow(image[64,:,:]) 
+    #plt.show()
 
     # Test the mean and variance calculations, REMEMBER EACH CHANNEL HAS ITS OWN MEAN AND STD
-    SUVr_mean, SUVr_std, rCBF_mean, rCBF_std = calculate_mean_var(dataset) 
-    print("SUVr_mean: ", SUVr_mean, "SUVr_std: ", SUVr_std, "rCBF_mean: ", rCBF_mean, "rCBF_std: ", rCBF_std) 
+    #SUVr_mean, SUVr_std, rCBF_mean, rCBF_std = calculate_mean_var(dataset) 
+    #print("SUVr_mean: ", SUVr_mean, "SUVr_std: ", SUVr_std, "rCBF_mean: ", rCBF_mean, "rCBF_std: ", rCBF_std) 
 
     # Normalize the dataset
-    normalize = torchvision.transforms.Normalize((SUVr_mean, rCBF_mean), (SUVr_std, rCBF_std))
-    dataset = normalize(dataset)
+    #normalize = torchvision.transforms.Normalize((SUVr_mean, rCBF_mean), (SUVr_std, rCBF_std))
+    #dataset = normalize(dataset)
 
     #transform = Get_dataset.Crop(nrPixelscrop_z) #Argument is number of pixels to crop in Z direction, above and below
     #dataset_preprocessed = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)
@@ -164,6 +201,40 @@ if __name__ == "__main__":
     print(sample[0].shape)
     print()
     #visFuncs.show_scan(sample, 0)
+
+    """
+    bild=9
+
+    position = find_centered_pixel(sample)
+
+    #Crop according to position of striatum middle point(ignoring cropping in x & y)
+    nrPixelsz = 30 #top
+    z2 = 50 #bottom
+    SUV_cropped = imageSUV_rot[:,:, position[2]-z2 : position[2]+nrPixelsz]
+    CBF_cropped = imageCBF_rot[:,:, position[2]-z2 : position[2]+nrPixelsz]
+
+    fig, axs = plt.subplots(3, 2, figsize=(10,10))
+    sliceNr1=64
+    sliceNr2=64
+
+    axs[0, 0].imshow(imageSUV[64,:,:],cmap='hot') #SUVr 
+    axs[0, 0].set_title(['Patient 1: SUVr (PET) slice ', sliceNr1])
+
+    axs[0, 1].imshow(imageCBF[64,:,:],cmap='hot') #SUVr
+    axs[0, 1].set_title(['Patient 1: rCBF (SPECT) slice ', sliceNr2])
+
+    axs[1,1].scatter(position[2],position[1],position[0])
+    axs[1, 0].imshow(imageSUV_rot[64,:,:],cmap='hot') #SUVr
+    axs[1, 0].set_title(['Patient 1: rCBF (SPECT) slice ', sliceNr2])
+
+    axs[1, 1].imshow(imageCBF_rot[64,:,:],cmap='hot') #SUVr
+    axs[1, 1].set_title(['Patient 1: rCBF (SPECT) slice ', sliceNr2])
+    axs[2, 0].imshow(SUV_cropped[64,:,:],cmap='hot') #SUVr
+    axs[2, 0].set_title(['Patient 1: rCBF (SPECT) slice ', sliceNr2])
+    axs[2, 1].imshow(CBF_cropped[64,:,:],cmap='hot') #SUVr
+    axs[2, 1].set_title(['Patient 1: rCBF (SPECT) slice ', sliceNr2])
+    """
+
 
     """
     #Find the centered pixel position according to maximum intensity
