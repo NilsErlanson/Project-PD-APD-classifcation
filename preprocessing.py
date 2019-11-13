@@ -149,29 +149,36 @@ if __name__ == "__main__":
     # ****** PREPROCESSING ********
 
     #Print statistics of the dataset
-    for i in range(len(dataset)):   
-        sample = dataset.__getitem__(i)
-        print("Sample ", i, " np.max: ", np.max(sample[0]), "np.min): ", np.min(sample[0]))
+    #for i in range(len(dataset)):   
+        #sample = dataset.__getitem__(i)
+        #print("Sample ", i, " np.max: ", np.max(sample[0]), "np.min): ", np.min(sample[0]))
 
     #Show one of the samples in the dataset
     #plt.imshow(sample[0][64,:,:,0])
     #plt.show()
 
-    # ****** AUGMENTED DATASETS ********
-    noised_dataset = Get_dataset.noise_dataset(dataset)
-    noise_sample = noised_dataset.__getitem__(0)
-    # ****** AUGMENTED DATASETS ********
+    # ****** AUGMENTED DATASETS ******** NOISE
+    #noised_dataset = Get_dataset.noise_dataset(dataset)
+    #noise_sample = noised_dataset.__getitem__(0)
+    # ****** AUGMENTED DATASETS ******** ROTATION
+    rotated_dataset = Get_dataset.rotate_dataset(dataset)
+    rotate_sample = rotated_dataset.__getitem__(0)
 
-    fig, axs = plt.subplots(2, 2, figsize=(10,10))
-    sliceNr = 45
+    fig, axs = plt.subplots(3, 2, figsize=(10,10))
+    sliceNr = 40
+
     axs[0, 0].imshow(sample[0][:,:,sliceNr,0]) #SUVr
     axs[0, 0].set_title(['Original'])
-    axs[0, 1].imshow(sample[0][:,:,sliceNr+30, 0]) #rCBF
+    axs[0, 1].imshow(sample[0][:,:,sliceNr, 1]) #rCBF
     axs[0, 1].set_title(['Original'])
-    axs[1, 0].imshow(noise_sample[0][:,:,sliceNr, 0]) #SUVr
-    axs[1, 0].set_title(['Noised'])
-    axs[1, 1].imshow(noise_sample[0][:,:,sliceNr+30, 0]) #rCBF
-    axs[1, 1].set_title(['Noised'])
+    axs[1, 0].imshow(rotate_sample[0][:,:,sliceNr, 0]) #SUVr
+    axs[1, 0].set_title(['Rotated around z'])
+    axs[1, 1].imshow(rotate_sample[0][:,:,sliceNr, 1]) #rCBF
+    axs[1, 1].set_title(['Rotated around z'])
+    axs[2, 0].imshow(sample[0][64,:,:, 1])
+    axs[2, 0].set_title(['Original'])
+    axs[2, 1].imshow(rotate_sample[0][64,:,:, 1]) #rCBF
+    axs[2, 1].set_title(['Rotated around z'])
     plt.show()
 
     #print(find_centered_pixel(sample))
