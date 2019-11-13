@@ -53,15 +53,10 @@ def scroll_slices(image):
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
     plt.show()
 
-def calculate_mean_var(dataset):
+def calculate_mean_var(images):
     #Fetch a reference sample to be able to create matrices of the right size
-    sample = dataset.__getitem__(0)
 
-    image = sample[0][:,:,:,0]
-    plt.imshow(image[64,:,:]) 
-    plt.show()
-
-    shape = sample[0].shape
+    shape = images[0].shape
     print((len(dataset),shape[0], shape[1], shape[2]))
     
     # Uses the reference images sizes
@@ -78,17 +73,18 @@ def calculate_mean_var(dataset):
     return (images[:,:,:,:,0].mean(), np.sqrt(images[:,:,:,:,0].var()), images[:,:,:,:,1].mean(), np.sqrt(images[:,:,:,:,1].var()))
 
 
-def find_centered_pixel(sample):
+def find_centered_pixel(images):
     #image = np.squeeze(sample[0])
-    image = sample[0][:,:,:,0] #SUVr
+    #image = sample[0][:,:,:,0] #SUVr
+    image = images[:,:,:,0] #SUVr
 
-    val = np.max(image) - 0.15*np.max(image)  # HARD-CODED, USE PERCENTAGE INSTEAD? np.max(image) - 0.1*np.max(image)
-    pixel_position = np.where(image > val)
+    #val = np.max(image) - 0.35 * np.max(image)  # HARD-CODED, USE PERCENTAGE INSTEAD? np.max(image) - 0.1*np.max(image)
+    #pixel_position = np.where(image > val)
 
     #print("val: ", val, "pixel_pos: ", pixel_position)
 
-    #val = np.max(sample[0][:,:,0:100,0]) - np.max(sample[0][:,:,0:100,0]) * 0.35 # SUVR IMAGE
-    #pixel_position  = np.where( sample[0][:,:,0:100,1] > val )
+    val = np.max(images[:,:,0:100,0]) - np.max(images[:,:,0:100,0]) * 0.35 # SUVR IMAGE
+    pixel_position  = np.where( images[:,:,0:100,0] > val )
 
     x = pixel_position[0][:]
     y = pixel_position[1][:]
@@ -136,41 +132,71 @@ def rotate_image(sample):
 
 def noise_dataset(orginial_dataset, transform):
 
-
     return noise_dataset
 
 if __name__ == "__main__":
+    #
+    # Import the images and preprocess the data, rotate 20 degrees around z-axis, crop the z axis and normalize the data 
+    #
+
+    # ****** PREPROCESSING ********
     image_root = 'projectfiles_PE2I/scans/ecat_scans/'
     label_root = 'projectfiles_PE2I/patientlist.csv'
     filetype_SUVR = "1.v"
     filetype_rCBF = "rCBF.v"
+    dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)
+    sample = dataset.__getitem__(0)
+    # ****** PREPROCESSING ********
 
-    original_dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)
-    sample = original_dataset.__getitem__(0)
+    #Print statistics of the dataset
+    for i in range(len(dataset)):   
+        sample = dataset.__getitem__(i)
+        print("Sample ", i, " np.max: ", np.max(sample[0]), "np.min): ", np.min(sample[0]))
+
+    #Show one of the samples in the dataset
+    #plt.imshow(sample[0][64,:,:,0])
+    #plt.show()
+
+    # ****** AUGMENTED DATASETS ********
+    noised_dataset = Get_dataset.noise_dataset(dataset)
+    noise_sample = noised_dataset.__getitem__(0)
+    # ****** AUGMENTED DATASETS ********
+
+    fig, axs = plt.subplots(2, 2, figsize=(10,10))
+    sliceNr = 45
+    axs[0, 0].imshow(sample[0][:,:,sliceNr,0]) #SUVr
+    axs[0, 0].set_title(['Original'])
+    axs[0, 1].imshow(sample[0][:,:,sliceNr+30, 0]) #rCBF
+    axs[0, 1].set_title(['Original'])
+    axs[1, 0].imshow(noise_sample[0][:,:,sliceNr, 0]) #SUVr
+    axs[1, 0].set_title(['Noised'])
+    axs[1, 1].imshow(noise_sample[0][:,:,sliceNr+30, 0]) #rCBF
+    axs[1, 1].set_title(['Noised'])
+    plt.show()
+
     #print(find_centered_pixel(sample))
     #visFuncs.show_scan(sample,0)
     
     # *************** PREPROCESSING **********************
-    pixelstop = 30
-    pixelsbottom = 50
-    degrees = 20
+    #pixelstop = 30
+    #pixelsbottom = 50
+    #degrees = 20
     # Preprocessing stage: rotate crop, normalize
-    preprocess = torchvision.transforms.Compose([
-        Get_dataset.Rotate_around_x(degrees),
-        Get_dataset.Crop(pixelstop, pixelsbottom)
-    ])
+    #preprocess = torchvision.transforms.Compose([
+    #    Get_dataset.Rotate_around_x(degrees),
+    #    Get_dataset.Crop(pixelstop, pixelsbottom)
+    #])
 
     #Only rotation
     #preprocess = Get_dataset.Rotate_around_x(degrees)
     #Only cropping
-    preprocess = Get_dataset.Crop(pixelstop, pixelsbottom)
+    #preprocess = Get_dataset.Crop(pixelstop, pixelsbottom)
     
     #With preprocess
     #dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF, preprocess)
     #Without preprocess  
-    dataset1 = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)  
+    #dataset = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)  
     #sample = dataset.__getitem__(0)
-    dataset2 = Get_dataset.ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)  
     #print("sample[0].shape: ", sample[0].shape, "sample[1].shape: ", sample[1].shape)
 
 
@@ -198,8 +224,7 @@ if __name__ == "__main__":
     #sample = dataset_preprocessed.__getitem__(0)
     # *************** PREPROCESSING **********************
 
-    print(sample[0].shape)
-    print()
+
     #visFuncs.show_scan(sample, 0)
 
     """

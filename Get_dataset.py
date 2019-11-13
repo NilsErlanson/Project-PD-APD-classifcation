@@ -14,31 +14,14 @@ import preprocessing
 # To rotate the images
 import scipy.ndimage
 
+import numpydataset
+
+
 
 #
 # DATA AUGMENTATION TRANSFORMS
 #
-class Random_rotate_around_z(object):
-    #
-    # Rotate the scan around the x-axis
-    #
 
-    def __init__(self, nrPixelsz = None):
-        self.nrPixelsz = nrPixelsz
-
-    def __call__(self, sample):
-        scans = sample[0]
-        disease = sample[1]
-
-        #Find the centered pixel according to the maximum intensity pixel areas in the SUVR scan
-        centered_pixel_position = preprocessing.find_centered_pixel(sample)
-
-
-        #Crop the image
-        cropped_scans[:,:,:,0]  = scans[:,:, centered_pixel_position[2] - self.nrPixelsz : centered_pixel_position[2] + self.nrPixelsz, 0] #SUVr
-        cropped_scans[:,:,:,1]  = scans[:,:, centered_pixel_position[2] - self.nrPixelsz : centered_pixel_position[2] + self.nrPixelsz, 1] #rCBF
-
-        return (scans, disease)
 
 #
 #
@@ -46,80 +29,70 @@ class Random_rotate_around_z(object):
 #
 #
 
-#Extract positions over threshold
-#if(bild==22 or bild ==20):
-#    pixel_threshold=0.35
-#else:
-#    pixel_threshold=0.1
+def rotate_image_around_x(images, degrees = 20):
+    #Fetch reference to get the shape of the images
+    #shape = np.shape(scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2)), reshape = False)
+
+    #Create an array to store the scans of all the patients
+    #rotated_scans = np.zeros((shape[0], shape[1], shape[2], 2))
 
 
 
-class Rotate_around_x(object):
-    #
-    # Rotate the scan around the x-axis
-    #
+    #Rotate around x-axis to align the brain with the vertical line
+    #rotated_scans[:,:,:,0] = scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2), reshape = False) #SUVr
+    #rotated_scans[:,:,:,1] = scipy.ndimage.interpolation.rotate(images[:,:,:,1], -degrees, axes = (1,2), reshape = False) #rCBF
+    
+    #Rotate around x-axis to align the brain with the vertical line
+    images[:,:,:,0] = scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2), reshape = False) #SUVr
+    images[:,:,:,1] = scipy.ndimage.interpolation.rotate(images[:,:,:,1], -degrees, axes = (1,2), reshape = False) #rCBF
 
-    def __init__(self, degrees):
-        self.degrees = degrees
+    return images
 
-    def __call__(self, sample):
-        scans = sample[0]
-        disease = sample[1] 
-
-        #Fetch reference to get the shape of the images
-        shape = np.shape(scipy.ndimage.interpolation.rotate(scans[:,:,:,0], -self.degrees, axes = (1,2)))
-        #Create an array to store the scans of all the patients
-        rotated_scans = np.zeros((shape[0], shape[1], shape[2], 2))
-
-        #Rotate around x-axis to align the brain with the vertical line
-        rotated_scans[:,:,:,0] = scipy.ndimage.interpolation.rotate(scans[:,:,:,0], -self.degrees, axes = (1,2)) #SUVr
-        rotated_scans[:,:,:,1] = scipy.ndimage.interpolation.rotate(scans[:,:,:,1], -self.degrees, axes = (1,2)) #rCBF
-
-        return (rotated_scans, disease)
-
-def crop_image(image, pixeltop, pixelbottom):
+def crop_image(images, nrPixelsTop = 30, nrPixelsBottom = 50):
     #Find the centered pixel according to the maximum intensity pixel areas in the SUVR scan
-    centered_pixel_position = preprocessing.find_centered_pixel(sample)
+    centered_pixel_position = preprocessing.find_centered_pixel(images)
 
-    shape = np.shape(scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 0])
+    shape = np.shape(images[:,:, centered_pixel_position[2] - nrPixelsBottom : centered_pixel_position[2] + nrPixelsTop, 0])
     #Create an array to store the scans of all the patients
     cropped_scans = np.zeros((shape[0], shape[1], shape[2], 2))
 
     #Crop the image
-    cropped_scans[:,:,:,0] = scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 0] #SUVr
-    cropped_scans[:,:,:,1] = scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 1] #rCBF
+    cropped_scans[:,:,:,0] = images[:,:, centered_pixel_position[2] - nrPixelsBottom : centered_pixel_position[2] + nrPixelsTop, 0] #SUVr
+    cropped_scans[:,:,:,1] = images[:,:, centered_pixel_position[2] - nrPixelsBottom : centered_pixel_position[2] + nrPixelsTop, 1] #rCBF
 
-    return cropped_image
+    return cropped_scans
 
-class Crop(object):
-    #
-    #Crops the image in a sample
-    #
+def noise_dataset(original_dataset):
+    #Fetch reference sample
+    scan, dis = original_dataset[0]
+    shape = scan.shape
+    noisenp = np.zeros((np.append(len(original_dataset), scan.shape)))
+    labelsnp = np.zeros(np.append(len(original_dataset), dis.shape))
+    noisenp[0,:,:,:,:] = scan
+    labelsnp[0,:] = dis
 
-    def __init__(self, nrPixelsTop = None, nrPixelsBottom = None):
-        self.nrPixelsTop = nrPixelsTop
-        self.nrPixelsBottom = nrPixelsBottom
+    for i in range(1,len(original_dataset)):
+        randomNoise = np.random.rand(shape[0], shape[1], shape[2], 2)
+        print("Noise: ", np.min(randomNoise), np.max(randomNoise))
+        noisenp[i,:,:,:,:] = scan #+ randomNoise # Adding random noise from the standard nornmal dist
+        labelsnp[i,:] = dis
 
-    def __call__(self, sample):
-        scans = sample[0]
-        disease = sample[1]
+    noise_dataset  = numpydataset.numpy_to_dataset(noisenp,labelsnp)
+    return noise_dataset
 
-        #Find the centered pixel according to the maximum intensity pixel areas in the SUVR scan
-        centered_pixel_position = preprocessing.find_centered_pixel(sample)
+def normalize_image(images, mean_SUVR, std_SUVR, mean_rCBF, std_rCBF):
+    images[:,:,:,0] = (images[:,:,:,0] - mean_SUVR) / std_SUVR
+    images[:,:,:,1] = (images[:,:,:,1] - mean_rCBF) / std_rCBF
 
-        shape = np.shape(scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 0])
-        #Create an array to store the scans of all the patients
-        cropped_scans = np.zeros((shape[0], shape[1], shape[2], 2))
+    return images
 
-        #Crop the image
-        cropped_scans[:,:,:,0] = scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 0] #SUVr
-        cropped_scans[:,:,:,1] = scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 1] #rCBF
-
-        return (cropped_scans, disease)
+def calculate_mean_var(images):
+    #return (images[:,:,:,:,0].mean(), np.sqrt(images[:,:,:,:,0].var()), images[:,:,:,:,1].mean(), np.sqrt(images[:,:,:,:,1].var()))
+    return (images[np.nonzero(images[:,:,:,:,0])].mean(), np.sqrt(images[np.nonzero(images[:,:,:,:,0])].var()), images[np.nonzero(images[:,:,:,:,1])].mean(), np.sqrt(images[np.nonzero(images[:,:,:,:,1])].var()))
 
 
 class ScanDataSet(Dataset):
-    def __init__(self, image_root, label_root, filetype_SUVR, filetype_rCBF, transform = None):
+    def __init__(self, image_root, label_root, filetype_SUVR, filetype_rCBF):
         self.image_root = image_root
         self.label_root = label_root
         self.filetype_SUVR = filetype_SUVR #indicates which kind of scan, use ""
@@ -127,7 +100,7 @@ class ScanDataSet(Dataset):
 
         self.samples = []
         self.disease = LabelEncoder()
-        self.transform = transform
+        #self.transform = transform
         self._init_dataset()
 
     def __len__(self):
@@ -135,8 +108,8 @@ class ScanDataSet(Dataset):
 
     def __getitem__(self, idx):
         #Apply the transform to the sample if specified
-        if self.transform:
-            self.samples[idx] = self.transform(self.samples[idx])
+        #if self.transform:
+        #    self.samples[idx] = self.transform(self.samples[idx])
  
         scans, disease = self.samples[idx]
         
@@ -179,23 +152,113 @@ class ScanDataSet(Dataset):
         refImg = ecat.load(listFilesECAT_SUVR[0]).get_frame(0)
 
         #Create an array to store the scans of all the patients
-        images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2))
+        images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
 
-        #Append the SUVR and rCBF images and the corresponding label into one sample
+        cropped_images = np.zeros((np.size(listFilesECAT_SUVR),np.shape(refImg)[0],np.shape(refImg)[1], 80, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
+
+        # Preprocess our data
+        print("Preprocessing the data ...")
+        # Load the whole dataset and save into numpy array and perform cropping and rotation around x-axis
         for nr in range(np.size(listFilesECAT_SUVR)):
-
-
-            #Load the SUVR image
+             #Load the SUVR image
             images[:,:,:,0] = ecat.load(listFilesECAT_SUVR[nr]).get_frame(0)
-
             #Load the rCBF image
             images[:,:,:,1] = ecat.load(listFilesECAT_rCBF[nr]).get_frame(0)
 
-            # Preprocess our data
+            rotated_images = rotate_image_around_x(images)
+            
+            #Store all of the cropped images to be able to calculate the statistics before normalization
+            cropped_images[nr,:,:,:,:] = crop_image(rotated_images)
+            
 
+        #  Calculate statistics in order to be able to normalize the dataset
+        mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_var(cropped_images) 
+
+        # Normalize the data and append them into samples with the corresponding label
+        for nr in range(np.size(listFilesECAT_SUVR)):
+            normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
 
             #Append the preprocessed data into samples
-            self.samples.append((images, diseases[nr,:]))
+            self.samples.append((normalized_images, diseases[nr,:]))
+
+        print("Done")
+
+"""
+class Random_rotate_around_z(object):
+    #
+    # Rotate the scan around the x-axis
+    #
+
+    def __init__(self, nrPixelsz = None):
+        self.nrPixelsz = nrPixelsz
+
+    def __call__(self, sample):
+        scans = sample[0]
+        disease = sample[1]
+
+        #Find the centered pixel according to the maximum intensity pixel areas in the SUVR scan
+        centered_pixel_position = preprocessing.find_centered_pixel(sample)
+
+
+        #Crop the image
+        cropped_scans[:,:,:,0]  = scans[:,:, centered_pixel_position[2] - self.nrPixelsz : centered_pixel_position[2] + self.nrPixelsz, 0] #SUVr
+        cropped_scans[:,:,:,1]  = scans[:,:, centered_pixel_position[2] - self.nrPixelsz : centered_pixel_position[2] + self.nrPixelsz, 1] #rCBF
+
+        return (scans, disease)
+"""
+
+"""
+class Rotate_around_x(object):
+    #
+    # Rotate the scan around the x-axis
+    #
+
+    def __init__(self, degrees):
+        self.degrees = degrees
+
+    def __call__(self, sample):
+        scans = sample[0]
+        disease = sample[1] 
+
+        #Fetch reference to get the shape of the images
+        shape = np.shape(scipy.ndimage.interpolation.rotate(scans[:,:,:,0], -self.degrees, axes = (1,2)))
+        #Create an array to store the scans of all the patients
+        rotated_scans = np.zeros((shape[0], shape[1], shape[2], 2))
+
+        #Rotate around x-axis to align the brain with the vertical line
+        rotated_scans[:,:,:,0] = scipy.ndimage.interpolation.rotate(scans[:,:,:,0], -self.degrees, axes = (1,2)) #SUVr
+        rotated_scans[:,:,:,1] = scipy.ndimage.interpolation.rotate(scans[:,:,:,1], -self.degrees, axes = (1,2)) #rCBF
+
+        return (rotated_scans, disease)
+"""
+
+"""
+class Crop(object):
+    #
+    #Crops the image in a sample
+    #
+
+    def __init__(self, nrPixelsTop = None, nrPixelsBottom = None):
+        self.nrPixelsTop = nrPixelsTop
+        self.nrPixelsBottom = nrPixelsBottom
+
+    def __call__(self, sample):
+        scans = sample[0]
+        disease = sample[1]
+
+        #Find the centered pixel according to the maximum intensity pixel areas in the SUVR scan
+        centered_pixel_position = preprocessing.find_centered_pixel(sample)
+
+        shape = np.shape(scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 0])
+        #Create an array to store the scans of all the patients
+        cropped_scans = np.zeros((shape[0], shape[1], shape[2], 2))
+
+        #Crop the image
+        cropped_scans[:,:,:,0] = scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 0] #SUVr
+        cropped_scans[:,:,:,1] = scans[:,:, centered_pixel_position[2] - self.nrPixelsBottom : centered_pixel_position[2] + self.nrPixelsTop, 1] #rCBF
+
+        return (cropped_scans, disease)
+"""
 
 """ class ScanDataSet(Dataset):
     def __init__(self, image_root, label_root, filetype_SUVR, filetype_rCBF):
