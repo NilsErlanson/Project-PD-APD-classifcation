@@ -66,15 +66,15 @@ def noise_dataset(original_dataset):
     #Fetch reference sample
     scan, dis = original_dataset[0]
     shape = scan.shape
-    noisenp = np.zeros((np.append(len(original_dataset), scan.shape)))
-    labelsnp = np.zeros(np.append(len(original_dataset), dis.shape))
-    noisenp[0,:,:,:,:] = scan
-    labelsnp[0,:] = dis
+    noisenp = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
+    labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
+    print(noisenp.shape)
+    print(labelsnp.shape)
 
-    for i in range(1,len(original_dataset)):
+    for i in range(len(original_dataset)):
         randomNoise = np.random.rand(shape[0], shape[1], shape[2], 2)
-        print("Noise: ", np.min(randomNoise), np.max(randomNoise))
-        noisenp[i,:,:,:,:] = scan #+ randomNoise # Adding random noise from the standard nornmal dist
+        scan,dis = original_dataset[i]
+        noisenp[i,:,:,:,:] = np.add(scan,randomNoise) # Adding random noise from the standard nornmal dist
         labelsnp[i,:] = dis
 
     noise_dataset  = numpydataset.numpy_to_dataset(noisenp,labelsnp)
@@ -100,11 +100,15 @@ class ScanDataSet(Dataset):
 
         self.samples = []
         self.disease = LabelEncoder()
+        self.labelName = []
         #self.transform = transform
         self._init_dataset()
 
     def __len__(self):
         return len(self.samples)
+    
+    def __getName__(self,idx):
+        return self.labelName[idx]
 
     def __getitem__(self, idx):
         #Apply the transform to the sample if specified
@@ -118,7 +122,9 @@ class ScanDataSet(Dataset):
     def _init_dataset(self):
         #Read the disaese
         tmp_df = pd.read_csv(self.label_root)
-        
+
+        self.labelName = tmp_df.Disease
+
         labels = tmp_df.Label.astype(np.int64) #Integer labels
         one_hot_encode = list()
         for value in labels:
@@ -165,21 +171,21 @@ class ScanDataSet(Dataset):
             #Load the rCBF image
             images[:,:,:,1] = ecat.load(listFilesECAT_rCBF[nr]).get_frame(0)
 
-            rotated_images = rotate_image_around_x(images)
+       #     rotated_images = rotate_image_around_x(images)
             
             #Store all of the cropped images to be able to calculate the statistics before normalization
-            cropped_images[nr,:,:,:,:] = crop_image(rotated_images)
+        #    cropped_images[nr,:,:,:,:] = crop_image(rotated_images)
             
 
         #  Calculate statistics in order to be able to normalize the dataset
-        mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_var(cropped_images) 
+       # mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_var(cropped_images) 
 
         # Normalize the data and append them into samples with the corresponding label
         for nr in range(np.size(listFilesECAT_SUVR)):
-            normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
+        #    normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
 
             #Append the preprocessed data into samples
-            self.samples.append((normalized_images, diseases[nr,:]))
+            self.samples.append((images, diseases[nr,:]))
 
         print("Done")
 
@@ -333,3 +339,5 @@ class Crop(object):
             #Append them into one sample
             self.samples.append((image_SUVR, image_rCBF, diseases[nr,:]))
  """
+
+ 
