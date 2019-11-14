@@ -1,12 +1,13 @@
 #Script for getting the the scans and diseases into a torch dataset
 #Author: Nissnessthebuisness and LyckTheMyck
 import os
-from sklearn.preprocessing import LabelEncoder
-from torch.utils.data import Dataset
-import torch
 import pandas as pd
 import numpy as np
 import nibabel as nib
+
+from sklearn.preprocessing import LabelEncoder
+from torch.utils.data import Dataset, DataLoader, random_split
+import torch
 from nibabel import ecat
 
 import preprocessing
@@ -16,31 +17,11 @@ import scipy.ndimage
 
 import numpydataset
 
+import utils
 
 
-#
-# DATA AUGMENTATION TRANSFORMS
-#
-
-
-#
-#
-# PREPROCESSING TRANSFORMS
-#
-#
-
+# Rotates the image around x-axis with 20 degrees
 def rotate_image_around_x(images, degrees = 20):
-    #Fetch reference to get the shape of the images
-    #shape = np.shape(scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2)), reshape = False)
-
-    #Create an array to store the scans of all the patients
-    #rotated_scans = np.zeros((shape[0], shape[1], shape[2], 2))
-
-
-
-    #Rotate around x-axis to align the brain with the vertical line
-    #rotated_scans[:,:,:,0] = scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2), reshape = False) #SUVr
-    #rotated_scans[:,:,:,1] = scipy.ndimage.interpolation.rotate(images[:,:,:,1], -degrees, axes = (1,2), reshape = False) #rCBF
     
     #Rotate around x-axis to align the brain with the vertical line
     images[:,:,:,0] = scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2), reshape = False) #SUVr
@@ -48,6 +29,7 @@ def rotate_image_around_x(images, degrees = 20):
 
     return images
 
+# Crops the images in the z-direction
 def crop_image(images, nrPixelsTop = 30, nrPixelsBottom = 50):
     #Find the centered pixel according to the maximum intensity pixel areas in the SUVR scan
     centered_pixel_position = preprocessing.find_centered_pixel(images)
@@ -62,14 +44,13 @@ def crop_image(images, nrPixelsTop = 30, nrPixelsBottom = 50):
 
     return cropped_scans
 
+# Applies Gaussian distributed random noise to the dataset
 def noise_dataset(original_dataset):
     #Fetch reference sample
     scan, dis = original_dataset[0]
     shape = scan.shape
     noisenp = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
     labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
-    print(noisenp.shape)
-    print(labelsnp.shape)
 
     for i in range(len(original_dataset)):
         randomNoise = np.random.rand(shape[0], shape[1], shape[2], 2)
@@ -80,34 +61,37 @@ def noise_dataset(original_dataset):
     noise_dataset  = numpydataset.numpy_to_dataset(noisenp,labelsnp)
     return noise_dataset
 
+# Rotates the datasets randomly with 20 degrees around z-axis, 5 degrees around x-axis
 def rotate_dataset(original_dataset):
     #Fetch reference sample
     scan, dis = original_dataset[0]
     shape = scan.shape
     rotatep = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
     labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
-    print(rotatep.shape)
-    print(labelsnp.shape)
+
 
     for i in range(len(original_dataset)):
-        scan,dis = original_dataset[i]
-        rand_rot_z=np.random.uniform(-20,20)
-        rand_rot_x=np.random.uniform(-5,5)  
+        scan, dis = original_dataset[i]
+        rand_rot_z = np.random.uniform(-20,20)
+        rand_rot_x = np.random.uniform(-5,5)  
         rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(scan[:,:,:,0], rand_rot_z, axes = (0,1), reshape = False) #SUVr
         rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(scan[:,:,:,1], rand_rot_z, axes = (0,1), reshape = False) #rCBF
         rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,0], rand_rot_x, axes = (1,2), reshape = False) #SUVr
         rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,1], rand_rot_x, axes = (1,2), reshape = False) #rCBF 
         labelsnp[i,:] = dis
+
     rotate_dataset  = numpydataset.numpy_to_dataset(rotatep,labelsnp)
     return rotate_dataset
 
+# Normalizes the images according to the whole datasets mean and standard deviance
 def normalize_image(images, mean_SUVR, std_SUVR, mean_rCBF, std_rCBF):
     images[:,:,:,0] = (images[:,:,:,0] - mean_SUVR) / std_SUVR
     images[:,:,:,1] = (images[:,:,:,1] - mean_rCBF) / std_rCBF
 
     return images
 
-def calculate_mean_var(images):
+# Calculates the mean and standard deviance of the whole dataset
+def calculate_mean_std(images):
     #return (images[:,:,:,:,0].mean(), np.sqrt(images[:,:,:,:,0].var()), images[:,:,:,:,1].mean(), np.sqrt(images[:,:,:,:,1].var()))
     return (images[np.nonzero(images[:,:,:,:,0])].mean(), np.sqrt(images[np.nonzero(images[:,:,:,:,0])].var()), images[np.nonzero(images[:,:,:,:,1])].mean(), np.sqrt(images[np.nonzero(images[:,:,:,:,1])].var()))
 
@@ -196,20 +180,59 @@ class ScanDataSet(Dataset):
             
             #Store all of the cropped images to be able to calculate the statistics before normalization
             cropped_images[nr,:,:,:,:] = crop_image(rotated_images)
-            self.samples.append((cropped_images[nr,:,:,:,:], diseases[nr,:]))
 
 
         #  Calculate statistics in order to be able to normalize the dataset
-       # mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_var(cropped_images) 
+        mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_var(cropped_images) 
 
         # Normalize the data and append them into samples with the corresponding label
-        #for nr in range(np.size(listFilesECAT_SUVR)):
-        #    normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
+        for nr in range(np.size(listFilesECAT_SUVR)):
+            normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
 
             #Append the preprocessed data into samples
-            #self.samples.append((images, diseases[nr,:]))
+            self.samples.append((normalized_images, diseases[nr,:]))
 
         print("Done")
+
+
+if __name__ == "__main__":
+
+    # ****** PREPROCESSING ********
+    image_root = 'projectfiles_PE2I/scans/ecat_scans/'
+    label_root = 'projectfiles_PE2I/patientlist.csv'
+    filetype_SUVR = "1.v"
+    filetype_rCBF = "rCBF.v"
+
+    original_dataset = ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)
+    sample = original_dataset.__getitem__(0)
+    # ****** PREPROCESSING ********
+
+    # ****** CREATE AUGMENTED DATASETS ********
+    print("Augmenting the data")
+    datasets = []
+    # For number of times we want to duplicate our dataset
+    for i in range(5):
+        dataset_temp = noise_dataset(original_dataset)
+        dataset_temp = rotate_dataset(dataset_temp)
+
+        datasets.append(dataset_temp)
+        print(i)
+
+    print("Done")
+    # ****** CREATE AUGMENTED DATASETS ********
+
+    # Concat the datasets into one
+    augmented_dataset = ConcatDataset(datasets)
+
+    # Save the concated augmented dataset
+    pickle_out = open("augmented_dataset.pickle","wb")
+    pickle.dump(augmented_dataset, pickle_out)
+    pickle_out.close()
+
+    # Save the original preprocessed dataset 
+    pickle_out = open("original_dataset.pickle","wb")
+    pickle.dump(original_dataset, pickle_out)
+    pickle_out.close()
 
 """
 class Random_rotate_around_z(object):
