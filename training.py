@@ -1,24 +1,24 @@
+#
+# Scipt which loads a model, splits the loaded datasets into training/test data
+#
+# Saves the trained model into a file which can be used to predict using the file predict.py
+# 
+# Could be used to validate the model using validate.py
+#
+
+# To use the parameters specified in config.py
+import config
+#Our own files
+import model
+import load_dataset
+import visFuncs
+from create_dataset import ScanDataSet
+
 import pandas as pd
 import numpy as np
-import sklearn
 import torch
-#Our own files
-import Get_dataset
-import visFuncs
-import preprocessing
 
-# To rotate the images
-import scipy.ndimage
-
-#To transform the images
-
-import matplotlib.pyplot as plt
-
-import torchvision
-
-from torch.nn import functional as F
-
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import DataLoader, random_split
 
 
 def training_session(model, optimizer, cost_function, train_data, test_data):
@@ -27,21 +27,20 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
     test_loss = []
 
     # optimize parameters for 3 epochs
-    for i in range(6):
+    for i in range(config.epochs):
 
         # for each minibatch
         for x, y in train_data:
             x = x.permute(0,4,1,2,3)
 
-
             # evaluate the cost function on the training data set
-            #loss = cost_function(x, model, 5)
 
             #loss = cost_function(model(x), torch.max(y, 1)[1]) #need model output and target
             #loss = criterion(outputs, torch.max(labels, 1)[1])
             target = torch.max(y,1)[1] #needed for crossentropy
-            print("target: ",target)
-            loss = cost_function(model.forward(x), torch.max(y,1)[1])
+
+            #print("target: ",target)
+            loss = cost_function(model.forward(x), target)
             #print("Loss: " ,loss)
             # update the statistics
             training_loss.append(loss.item())
@@ -73,74 +72,45 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
 
     return model
 
-class SimpleCNN(torch.nn.Module):
-    
-    #Our batch shape for input x is (128, 128, 128, 2)
-    
-    def __init__(self):
-        super(SimpleCNN, self).__init__()
-        
-        #Input channels = 2, output channels = 18
-        self.conv1 = torch.nn.Conv3d(in_channels = 2, out_channels = 2, kernel_size = (3,3,3), stride = 10, padding = 1)
-        #self.pool = torch.nn.MaxPool3d(kernel_size = 3, stride = 2, padding = 0)
-        self.Flatten = torch.nn.Flatten()
-        
-        #4608 input features, 64 output features (see sizing flow below)
-        self.fc1 = torch.nn.Linear(2704, 200)
-        
-        #64 input features, 10 output features for our 10 defined classes
-        self.fc2 = torch.nn.Linear(200, 6)
-        
-    def forward(self, x):
-        
-        #Computes the activation of the first convolution
-        #Size changes from (3, 32, 32) to (18, 32, 32)
-        x = F.relu(self.conv1(x))
-        
-        #Size changes from (18, 32, 32) to (18, 16, 16)
-        #x = self.pool(x)
-        x = self.Flatten(x)
-        
-        #Reshape data to input to the input layer of the neural net
-        #Size changes from (18, 16, 16) to (1, 4608)
-        #Recall that the -1 infers this dimension from the other given dimension
-        #x = x.view(-1, 18 * 16 *16)
-        
-        #Computes the activation of the first fully connected layer
-        #Size changes from (1, 4608) to (1, 64)
-        x = F.relu(self.fc1(x))
-        
-        #Computes the second fully connected layer (activation applied later)
-        #Size changes from (1, 64) to (1, 10)
-        x = F.softmax(self.fc2(x))
-
-        return (x)
         
 # ************************** Ligger i main ***************************
 if __name__ == "__main__":
     # Split into training and test dataset
-    dataset = preprocessing.predata()
+    original_dataset, augmented_dataset = load_dataset.load_datasets()
+    dataset = original_dataset
+
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
     print(len(train_dataset), len(test_dataset))
     
-    print(train_dataset[0][1])
+    #print(train_dataset[0][1])
+
+    #Load the data and create test/train sets
+    #original_dataset, augmented_dataset = preprocessing.load_datasets()
+    #train_dataset, test_dataset = Get_dataset.split_dataset_one_random_sample_from_each_class(original_dataset, augmented_dataset)
+
+    #print("len(train_dataset): ", len(train_dataset))
+    #print("len(test_dataset): ", len(test_dataset))
+    #sample = train_dataset.__getitem__(0)
+    #print("sample[0].type: ", type(sample[0][...,1]))
+
 
     # Try to learn and validate simple CNN
     # define the data loaders
-    train_data = torch.utils.data.DataLoader(train_dataset, batch_size = 5, shuffle=True)
-    test_data = torch.utils.data.DataLoader(test_dataset, batch_size = 5)
+    train_data = torch.utils.data.DataLoader(train_dataset, batch_size = config.batchSize, shuffle=True)
+    test_data = torch.utils.data.DataLoader(test_dataset, batch_size = config.batchSize)
     # # test data for the checking the network
-    testtensor = torch.rand((1,2,128,128,80),dtype=torch.float)
-    print(testtensor.shape)
+    
+    #testtensor = torch.rand((1,2,128,128,80), dtype=torch.float)
+    #print(testtensor.shape)
    
     # define the model
     #model = simple_network()
-    model = SimpleCNN()
-    output = model.forward(testtensor)
-    print(output)
+    model = model.SimpleCNN()
+    #output = model.forward(testtensor)
+    #print(output)
     # USES FLOAT
     from torchsummary import summary
     summary(model, input_size=(2, 128, 128, 80))
@@ -157,17 +127,21 @@ if __name__ == "__main__":
 
     # run training
     model = training_session(model, optimizer, cost_function, train_data, test_data)
+
     test = dataset[9]
     scan = test[0]
     scan = torch.from_numpy(scan).unsqueeze_(0)
     
-    print(scan.shape)
     scan = scan.permute(0,4,1,2,3)
     label = test[1]
     print(visFuncs.get_name(label))
     print(label)
-    predicttion = model.forward(scan)
-    val,ind = torch.max(predicttion,0)
-    print(val)
-    print(predicttion)
+    prediction = model.forward(scan)
+    
+    val, ind = torch.max(input = prediction, axis=1)
+    #print(val)
+    #print(predicttion)
+
+    print(prediction)
+    print(ind)
     
