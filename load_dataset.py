@@ -1,7 +1,7 @@
 #To import configuration parameters
 import config
 # To load the datasets from .pickle files
-import hickle
+import pickle
 import os
 # Needed to randomize indices
 import random
@@ -64,24 +64,36 @@ def split_dataset_one_random_sample_from_each_class(original_dataset, augmented_
 
 
 def load_datasets():
-    print("Name of the datasets: original_dataset and augmented_dataset", )
     # Load the datasets
-    if os.path.getsize("original_dataset.hickle") > 0:     
-        original_dataset = hickle.load('original_dataset.hickle')
-        print("original_dataset was successfully loaded!")
+    if os.path.getsize("original_dataset.pickle") > 0:    
+        pickle_in = open("original_dataset.pickle","rb")
+        original_dataset = pickle.load(pickle_in)       
+        print("'original_dataset.pickle' was successfully loaded!")
     else:
         original_dataset = 0
-        print("original_dataset is EMPTY")
+        print("'original_dataset.pickle' is EMPTY")
 
-    if os.path.getsize("augmented_dataset.hickle") > 0:     
-        augmented_dataset = hickle.load('augmented_dataset.hickle')
-        print("augmented_dataset was successfully loaded!")
+    if os.path.getsize("augmented_dataset.pickle") > 0:     
+        pickle_in = open("augmented_dataset.pickle","rb")
+        augmented_dataset = pickle.load(pickle_in)   
+        print("'augmented_dataset.pickle' was successfully loaded!")
     else:
         augmented_dataset = 0
-        print("augmented_dataset is EMPTY")
+        print("'augmented_dataset.pickle' is EMPTY")
 
     return original_dataset, augmented_dataset
 
 if __name__ == "__main__":
-    original, augmented = load_datasets_hickle()    
+    #original, augmented = load_datasets()  
+    original, augmented = load_datasets()  
+
+    #import numpydataset
+    #original = numpydataset.numpy_to_dataset(original_numpy)
+    #augmented = numpydataset.numpy_to_dataset(augmented_numpy)
+
+    #print(type(original_numpy))
+    #print(augmented_numpy.shape)  
+
+    print(original)
+    print(augmented)
 

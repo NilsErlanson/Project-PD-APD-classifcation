@@ -6,7 +6,7 @@
 # To import configuration parameters
 import config
 #Loading/Writing files
-import hickle
+import pickle
 # To load the ecat-files from folder
 import os
 from nibabel import ecat
@@ -254,22 +254,25 @@ if __name__ == "__main__":
     # Concat the datasets into one
     augmented_dataset = ConcatDataset(datasets)
 
-    print("Saving the files into folders")
-    hickle.dump(augmented_dataset, 'augmented_dataset.hickle', mode='w')
-    hickle.dump(original_dataset, 'original_dataset.hickle', mode='w')
-    print("Done")
-
-  
     """
+    hickle.dump(augmented_dataset, 'augmented_dataset.hickle', mode = 'w')
+    hickle.dump(original_dataset, 'original_dataset.hickle', mode = 'w')
+    """
+    
+
+    print("Saving the files into folders")
+
     # Save the original preprocessed dataset 
     pickle_out2 = open("original_dataset.pickle","wb")
-    pickle.dump(original_dataset, pickle_out2, protocol = 2)
+    pickle.dump(original_dataset, pickle_out2)
     pickle_out2.close()
 
     # Save the concated augmented dataset
     pickle_out = open("augmented_dataset.pickle","wb")
-    pickle.dump(augmented_dataset, pickle_out, protocol = 2)
+    pickle.dump(augmented_dataset, pickle_out)
     pickle_out.close()
-    """
+
+    print("Done")
+    
 
    
