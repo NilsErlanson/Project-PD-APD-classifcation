@@ -38,8 +38,8 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
             #loss = cost_function(model(x), torch.max(y, 1)[1]) #need model output and target
             #loss = criterion(outputs, torch.max(labels, 1)[1])
             target = torch.max(y,1)[1] #needed for crossentropy
+            #print("target: ",y)
 
-            #print("target: ",target)
             loss = cost_function(model.forward(x), target)
             #print("Loss: " ,loss)
             # update the statistics
@@ -62,7 +62,8 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
            accumulated_loss = 0
            for x, y in test_data:
                x = x.permute(0,4,1,2,3)
-               loss = cost_function(model.forward(x), torch.max(y,1)[1])
+               target = torch.max(y,1)[1]
+               loss = cost_function(model.forward(x), target)
                accumulated_loss += loss.item()
                 
             #update the statistics
@@ -75,45 +76,38 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
         
 # ************************** Ligger i main ***************************
 if __name__ == "__main__":
-    # Split into training and test dataset
+    # Load the datasets
     original_dataset, augmented_dataset = load_dataset.load_datasets()
-    dataset = original_dataset
 
-    train_size = int(0.8 * len(dataset))
-    test_size = len(dataset) - train_size
-    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+    # Split into training and test dataset
+    train_dataset, test_dataset = load_dataset.split_dataset_one_random_sample_from_each_class(original_dataset, augmented_dataset)
 
-    print(len(train_dataset), len(test_dataset))
+    print("len(original_dataset): ", len(original_dataset))
+    print("len(augmented_dataset): ", len(augmented_dataset))
+    print("len(train_dataset): ", len(train_dataset))
+    print("len(test_dataset): ", len(test_dataset))
+
+    print(type(train_dataset.__getitem__(0)[0]))
+
+    # THIS DATASPLIT WORKS
+    #dataset = original_dataset
+    #train_size = int(0.8 * len(dataset))
+    #test_size = len(dataset) - train_size
+    #train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+    #print(len(train_dataset), len(test_dataset))
     
-    #print(train_dataset[0][1])
-
-    #Load the data and create test/train sets
-    #original_dataset, augmented_dataset = preprocessing.load_datasets()
-    #train_dataset, test_dataset = Get_dataset.split_dataset_one_random_sample_from_each_class(original_dataset, augmented_dataset)
-
-    #print("len(train_dataset): ", len(train_dataset))
-    #print("len(test_dataset): ", len(test_dataset))
-    #sample = train_dataset.__getitem__(0)
-    #print("sample[0].type: ", type(sample[0][...,1]))
-
-
-    # Try to learn and validate simple CNN
     # define the data loaders
     train_data = torch.utils.data.DataLoader(train_dataset, batch_size = config.batchSize, shuffle=True)
     test_data = torch.utils.data.DataLoader(test_dataset, batch_size = config.batchSize)
-    # # test data for the checking the network
-    
-    #testtensor = torch.rand((1,2,128,128,80), dtype=torch.float)
-    #print(testtensor.shape)
-   
+      
     # define the model
-    #model = simple_network()
     model = model.SimpleCNN()
     #output = model.forward(testtensor)
     #print(output)
+
     # USES FLOAT
     from torchsummary import summary
-    summary(model, input_size=(2, 128, 128, 80))
+    summary(model, input_size = (2, 128, 128, 80))
 
     # TRAINING USES DOUBLE
     model = model.double()
