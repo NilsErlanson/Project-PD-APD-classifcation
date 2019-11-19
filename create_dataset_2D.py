@@ -91,8 +91,9 @@ class ScanDataSet(Dataset):
         nrOfSlices =  (config_2D.nrPixelsBottom + config_2D.nrPixelsTop)
 
         images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
-        cropped_images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1], nrOfSlices, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
+        cropped_images = np.zeros((np.size(listFilesECAT_SUVR), np.shape(refImg)[0], np.shape(refImg)[1], nrOfSlices, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
 
+        reshaped_2D_representation = np.zeros((np.size(listFilesECAT_SUVR), np.shape(refImg)[0], np.shape(refImg)[1], nrOfSlices*2)) #28 x 128 x 128 x 160 - HARD CODED CROP top = 30, bottom = 50
 
         # Preprocess our data
         # Load the whole dataset and save into numpy array and perform cropping and rotation around x-axis
@@ -106,24 +107,23 @@ class ScanDataSet(Dataset):
             rotated_images = rotate_image_around_x(images)
             
             # Crops the z-axis and stores all of the cropped images to be able to calculate the statistics before normalization
-            cropped_images = crop_z_axis(rotated_images)
-
-            reshaped_2D_representation = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1], nrOfSlices*2)) #28 x 128 x 128 x 160 - HARD CODED CROP top = 30, bottom = 50
-            reshaped_2D_representation[:,:, 0:nrOfSlices] = cropped_images[:,:,:,0]  
-            reshaped_2D_representation[:,:, nrOfSlices:] = cropped_images[:,:,:,1]  
-            
-            #Append the preprocessed data into samples
-            self.samples.append((reshaped_2D_representation, diseases[nr,:]))
+            cropped_images[nr,:,:,:,:] = crop_z_axis(rotated_images)
 
         #  Calculate statistics in order to be able to normalize the dataset
         #mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_std(cropped_images) 
 
         # Normalize the data and append them into samples with the corresponding label
-        #for nr in range(np.size(listFilesECAT_SUVR)):
-        #    normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
+        for nr in range(np.size(listFilesECAT_SUVR)):
+            min_value_suvr, max_value_suvr = cropped_images[nr,:,:,:,0].min(), cropped_images[nr,:,:,:,0].max()
+            min_value_rcbf, max_value_rcbf = cropped_images[nr,:,:,:,1].min(), cropped_images[nr,:,:,:,1].max()
+
+            normalized_images = normalize_image(cropped_images[nr,:,:,:,:], min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf)
+
+            reshaped_2D_representation[nr,:,:, 0:nrOfSlices] = normalized_images[:,:,:,0]  
+            reshaped_2D_representation[nr,:,:, nrOfSlices:] = normalized_images[:,:,:,1]  
 
             #Append the preprocessed data into samples
-        #    self.samples.append((normalized_images, diseases[nr,:]))
+            self.samples.append((reshaped_2D_representation[nr,:,:,:], diseases[nr,:]))
 
 
 # ********************* PREPROCESSING FUNCTIONS ****************************
@@ -153,9 +153,12 @@ def crop_z_axis(images, nrPixelsTop = config_2D.nrPixelsTop, nrPixelsBottom = co
     return cropped_scans
 
 # Normalizes the images according to the whole datasets mean and standard deviance
-def normalize_image(images, mean_SUVR, std_SUVR, mean_rCBF, std_rCBF):
-    images[:,:,:,0] = (images[:,:,:,0] - mean_SUVR) / std_SUVR
-    images[:,:,:,1] = (images[:,:,:,1] - mean_rCBF) / std_rCBF
+def normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf):
+    images[:,:,:,0] = (images[:,:,:,0] - min_value_suvr) / (-min_value_suvr + max_value_suvr)
+    images[:,:,:,1] = (images[:,:,:,1] - min_value_rcbf) / (-min_value_rcbf + max_value_rcbf)
+
+    #images[:,:,:,0] = (images[:,:,:,0] - mean_SUVR) / std_SUVR
+    #images[:,:,:,1] = (images[:,:,:,1] - mean_rCBF) / std_rCBF
 
     return images
 

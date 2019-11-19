@@ -9,7 +9,7 @@
 # To use the parameters specified in config.py
 import config_2D
 #Our own files
-import model
+import model2d
 import load_dataset_2D
 import visFuncs_2D
 from create_dataset_2D import ScanDataSet
@@ -38,7 +38,7 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
         for x, y in train_data:
 
             # Convert the data into the right format
-            x = x.permute(0,4,1,2,3)
+            #x = x.permute(0,4,1,2,3)
             
             #x = x.dtype
             #y = y.dtype
@@ -74,7 +74,7 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
             #evaluate the cost function on the test data set
             accumulated_loss = 0
             for x, y in test_data:
-                x = x.permute(0,4,1,2,3)
+                #x = x.permute(0,4,1,2,3)
                 x = x.float()
                 y = y.double()
                 target = torch.max(y,1)[1]
@@ -130,20 +130,44 @@ class ApplyTransform(Dataset):
     def __len__(self):
         return len(self.dataset)
 
+def validate(test_data, model):
+    correct = 0
+
+    for x,y in test_data:
+        x = x.float()
+        prediction = model.forward(x)
+
+        prediction = torch.max(prediction, 1)[1]
+        y = y.float()
+
+        label = torch.max(y,1)[1] #needed transformation for crossentropy
+
+        #if torch.eq(prediction, label):
+        #    correct = correct +1
+
+        print("prediction: ", prediction)
+        print("label: ", label)
+
+    return correct
+
+def plot_training_test_loss(training_loss, test_loss):
+    import matplotlib.pyplot as plt
+    # plot loss
+    plt.figure()
+    iterations = np.arange(1, len(training_loss) + 1)
+    plt.scatter(iterations, training_loss, label='training loss')
+    plt.scatter(iterations, test_loss, label='test loss')
+    plt.legend()
+    plt.xlabel('iteration')
+    plt.show() 
+
 # ************************** Ligger i main ***************************
 if __name__ == "__main__":
-    # Load the datasets
-    #original_dataset, augmented_dataset = load_dataset.load_datasets()
-    
+    # Load the datasets    
     print("Load dataset without transforms...")
     original_dataset = load_dataset_2D.load_original_dataset()
-    #original_dataset_without_transforms = ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)
     print("Done!\n")
-    
-    sample = original_dataset.__getitem__(0)
-    images = sample[0]
-    print(images.shape)
-
+  
     train_size = int(0.8 * len(original_dataset))
     test_size = len(original_dataset) - train_size
     train_dataset, test_dataset = random_split(original_dataset, [train_size, test_size])
@@ -155,22 +179,19 @@ if __name__ == "__main__":
 
     train_dataset = ApplyTransform(train_dataset, transform = train_transform)
     test_dataset = ApplyTransform(test_dataset, transform = test_transform)
+
+    train_sample = train_dataset.__getitem__(0)
+    visFuncs_2D.show_scan(train_sample)
+
+    print(len(train_dataset), len(test_dataset))
     print("Done!\n")
 
-    sample_test = train_dataset.__getitem__(2)
-    visFuncs_2D.show_scan(sample_test)
-
-    sample_original = original_dataset.__getitem__(2)
-    visFuncs_2D.show_scan(sample_original, True)
-
-    """
     # define the data loaders
     train_data = torch.utils.data.DataLoader(train_dataset, batch_size = config_2D.batchSize, shuffle=True)
     test_data = torch.utils.data.DataLoader(test_dataset, batch_size = config_2D.batchSize)
 
-
     # define the model
-    model = model.SimpleCNN() 
+    model = model2d.resnet() 
     #model = model.UNet3D(2, config.nrOfDifferentDiseases)  
     #model = torchvision.models.googlenet(pretrained=False, progress=True)
  
@@ -178,24 +199,24 @@ if __name__ == "__main__":
     #from torchsummary import summary
     #summary(model, input_size = (2, 128, 128, 80))
 
-
     # define the cost function
-    #cost_function = nn.MSELoss()
-    
     cost_function = torch.nn.CrossEntropyLoss()
-    #import loss
-    #cost_function = loss.ConfidentMSELoss()
-
 
     # define the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr = config_2D.learning_rate)
 
- 
 
     # run training
     #trained_model, training_loss, test_loss = training_session(model, optimizer, cost_function, train_data, test_data)
 
+    # evaluate the run
+    #plot_training_test_loss(training_loss, test_loss)
 
+    #nrCorrectPredicitons = validate(test_data, trained_model)
+    #print("Number of correct predictions: ", nrCorrectPredicitons)
+    #print("Validation rate: ", nrCorrectPredicitons / len(test_data))
+
+    """
     # Plot the training and test results
     plot_training_test_loss(training_loss, test_loss)
 
