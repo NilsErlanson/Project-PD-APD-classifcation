@@ -91,9 +91,8 @@ class ScanDataSet(Dataset):
         nrOfSlices =  (config_2D.nrPixelsBottom + config_2D.nrPixelsTop)
 
         images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
-        cropped_images = np.zeros((np.size(listFilesECAT_SUVR),np.shape(refImg)[0],np.shape(refImg)[1], nrOfSlices, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
+        cropped_images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1], nrOfSlices, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
 
-        reshaped_2D_representation = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1], nrOfSlices*2)) #28 x 128 x 128 x 160 - HARD CODED CROP top = 30, bottom = 50
 
         # Preprocess our data
         # Load the whole dataset and save into numpy array and perform cropping and rotation around x-axis
@@ -107,10 +106,11 @@ class ScanDataSet(Dataset):
             rotated_images = rotate_image_around_x(images)
             
             # Crops the z-axis and stores all of the cropped images to be able to calculate the statistics before normalization
-            cropped_images[nr,:,:,:,:] = crop_z_axis(rotated_images)
+            cropped_images = crop_z_axis(rotated_images)
 
-            reshaped_2D_representation[:,:, 0:nrOfSlices] = cropped_images[nr,:,:,:,0]  
-            reshaped_2D_representation[:,:, nrOfSlices:] = cropped_images[nr,:,:,:,1]  
+            reshaped_2D_representation = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1], nrOfSlices*2)) #28 x 128 x 128 x 160 - HARD CODED CROP top = 30, bottom = 50
+            reshaped_2D_representation[:,:, 0:nrOfSlices] = cropped_images[:,:,:,0]  
+            reshaped_2D_representation[:,:, nrOfSlices:] = cropped_images[:,:,:,1]  
             
             #Append the preprocessed data into samples
             self.samples.append((reshaped_2D_representation, diseases[nr,:]))
@@ -245,6 +245,7 @@ if __name__ == "__main__":
     print("Done\n")
 
     # Save the original preprocessed dataset 
+    print("Saving the dataset into file...")
     pickle_out2 = open("original_dataset_2D.pickle","wb")
     pickle.dump(original_dataset_2D, pickle_out2)
     pickle_out2.close()
