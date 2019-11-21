@@ -21,7 +21,7 @@ from torch.utils.data import Dataset, ConcatDataset
 # To rotate the images
 import scipy.ndimage
 # Our own files
-import numpydataset
+#import numpydataset
 
 
 class ScanDataSet(Dataset):
@@ -86,13 +86,7 @@ class ScanDataSet(Dataset):
         # Fetch a reference image to be able to create the right dimensions on the images
         refImg = ecat.load(listFilesECAT_SUVR[0]).get_frame(0)
 
-        #Create an array to store the scans of all the patients
-        nrOfSlices =  (config_2D.nrPixelsBottom + config_2D.nrPixelsTop)
-
         images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
-        cropped_images = np.zeros((np.size(listFilesECAT_SUVR), np.shape(refImg)[0], np.shape(refImg)[1], nrOfSlices, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
-
-        reshaped_2D_representation = np.zeros((np.size(listFilesECAT_SUVR), np.shape(refImg)[0], np.shape(refImg)[1], nrOfSlices*2)) #28 x 128 x 128 x 160 - HARD CODED CROP top = 30, bottom = 50
 
         # Preprocess our data
         # Load the whole dataset and save into numpy array and perform cropping and rotation around x-axis
@@ -102,54 +96,16 @@ class ScanDataSet(Dataset):
             #Load the rCBF image
             images[:,:,:,1] = ecat.load(listFilesECAT_rCBF[nr]).get_frame(0)
 
-            # Rotate the images around the x-axis with -20 degrees
-            rotated_images = rotate_image_around_x(images)
-            
-            # Crops the z-axis and stores all of the cropped images to be able to calculate the statistics before normalization
-            cropped_images[nr,:,:,:,:] = crop_z_axis(rotated_images)
+            # Calculate the min and max values for each image
+            min_value_suvr, max_value_suvr = images[:,:,:,0].min(), images[:,:,:,0].max()
+            min_value_rcbf, max_value_rcbf = images[:,:,:,1].min(), images[:,:,:,1].max()
 
-        #  Calculate statistics in order to be able to normalize the dataset
-        #mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_std(cropped_images) 
-
-        # Normalize the data and append them into samples with the corresponding label
-        for nr in range(np.size(listFilesECAT_SUVR)):
-            min_value_suvr, max_value_suvr = cropped_images[nr,:,:,:,0].min(), cropped_images[nr,:,:,:,0].max()
-            min_value_rcbf, max_value_rcbf = cropped_images[nr,:,:,:,1].min(), cropped_images[nr,:,:,:,1].max()
-
-            normalized_images = normalize_image(cropped_images[nr,:,:,:,:], min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf)
-
-            reshaped_2D_representation[nr,:,:, 0:nrOfSlices] = normalized_images[:,:,:,0]  
-            reshaped_2D_representation[nr,:,:, nrOfSlices:] = normalized_images[:,:,:,1]  
+            # Normalize the image
+            normalized_images = normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf)
 
             #Append the preprocessed data into samples
-            self.samples.append((reshaped_2D_representation[nr,:,:,:], diseases[nr,:]))
+            self.samples.append((normalized_images, diseases[nr,:]))
 
-
-# ********************* PREPROCESSING FUNCTIONS ****************************
-
-# Rotates the image around x-axis with 20 degrees
-def rotate_image_around_x(images, degrees = config_2D.fixed_degrees_z):
-    
-    #Rotate around x-axis to align the brain with the vertical line
-    images[:,:,:,0] = scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2), reshape = False) #SUVr
-    images[:,:,:,1] = scipy.ndimage.interpolation.rotate(images[:,:,:,1], -degrees, axes = (1,2), reshape = False) #rCBF
-
-    return images
-
-# Crops the images in the z-direction
-def crop_z_axis(images, nrPixelsTop = config_2D.nrPixelsTop, nrPixelsBottom = config_2D.nrPixelsBottom):
-    #Find the centered pixel according to the maximum intensity pixel areas in the SUVR scan
-    centered_pixel_position = find_centered_pixel(images)
-
-    shape = np.shape(images[:,:, centered_pixel_position[2] - nrPixelsBottom : centered_pixel_position[2] + nrPixelsTop, 0])
-    #Create an array to store the scans of all the patients
-    cropped_scans = np.zeros((shape[0], shape[1], shape[2], 2))
-
-    #Crop the image
-    cropped_scans[:,:,:,0] = images[:,:, centered_pixel_position[2] - nrPixelsBottom : centered_pixel_position[2] + nrPixelsTop, 0] #SUVr
-    cropped_scans[:,:,:,1] = images[:,:, centered_pixel_position[2] - nrPixelsBottom : centered_pixel_position[2] + nrPixelsTop, 1] #rCBF
-
-    return cropped_scans
 
 # Normalizes the images according to the whole datasets mean and standard deviance
 def normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf):
@@ -160,55 +116,6 @@ def normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_
     #images[:,:,:,1] = (images[:,:,:,1] - mean_rCBF) / std_rCBF
 
     return images
-
-# Calculates the mean and standard deviance of the whole dataset
-def calculate_mean_std(images):
-    #return (images[:,:,:,:,0].mean(), np.sqrt(images[:,:,:,:,0].var()), images[:,:,:,:,1].mean(), np.sqrt(images[:,:,:,:,1].var()))
-    return (images[np.nonzero(images[:,:,:,:,0])].mean(), np.sqrt(images[np.nonzero(images[:,:,:,:,0])].var()), images[np.nonzero(images[:,:,:,:,1])].mean(), np.sqrt(images[np.nonzero(images[:,:,:,:,1])].var()))
-
-
-# ********************* AUGMENTATION FUNCTIONS *****************************
-
-# Applies Gaussian distributed random noise to the dataset
-def noise_dataset(original_dataset):
-    #Fetch reference sample in order to create matrix to be able to save all of the images
-    scan, dis = original_dataset[0]
-    shape = scan.shape
-    noisenp = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
-    labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
-
-    for i in range(len(original_dataset)):
-        randomNoise = np.random.rand(shape[0], shape[1], shape[2], 2)
-        scan,dis = original_dataset[i]
-        noisenp[i,:,:,:,:] = np.add(scan, randomNoise) # Adding random noise from the standard nornmal dist
-        labelsnp[i,:] = dis
-
-    # Casts the numpy array to the class "Dataset"
-    noise_dataset  = numpydataset.numpy_to_dataset(noisenp,labelsnp)
-    return noise_dataset
-
-# Rotates the datasets randomly with 20 degrees around z-axis, 5 degrees around x-axis
-def rotate_dataset_around_z(original_dataset, degree_x = config_2D.random_degrees_x, degree_z = config_2D.random_degrees_z):
-    #Fetch reference sample
-    scan, dis = original_dataset[0]
-    shape = scan.shape
-    rotatep = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
-    labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
-
-
-    for i in range(len(original_dataset)):
-        scan, dis = original_dataset[i]
-        rand_rot_z = np.random.uniform(-degree_x, degree_x)
-        rand_rot_x = np.random.uniform(-degree_z, degree_z)  
-        rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(scan[:,:,:,0], rand_rot_z, axes = (0,1), reshape = False) #SUVr
-        rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(scan[:,:,:,1], rand_rot_z, axes = (0,1), reshape = False) #rCBF
-        rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,0], rand_rot_x, axes = (1,2), reshape = False) #SUVr
-        rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,1], rand_rot_x, axes = (1,2), reshape = False) #rCBF 
-        labelsnp[i,:] = dis
-
-    rotate_dataset  = numpydataset.numpy_to_dataset(rotatep,labelsnp)
-    return rotate_dataset
-
 
 # ************************* HELP FUNCTIONS ********************************
 def find_centered_pixel(images):
@@ -231,7 +138,6 @@ def find_centered_pixel(images):
     position = np.array([xmid,ymid,zmid]).astype(int)
 
     return position
-
 
 # ************************** MAIN FUNCTION **********************************
 if __name__ == "__main__":
