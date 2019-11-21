@@ -12,6 +12,7 @@ import config_2D
 import model2d
 import load_dataset_2D
 import visFuncs_2D
+import transformations_2D
 from create_dataset_2D import ScanDataSet
 
 import pandas as pd
@@ -37,22 +38,13 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
         # for each minibatch
         for x, y in train_data:
 
-            # Convert the data into the right format
-            #x = x.permute(0,4,1,2,3)
-            
-            #x = x.dtype
-            #y = y.dtype
-
-            # MED EGEN SPLITTNING
             x = x.float()
             y = y.float()
 
             # evaluate the cost function on the training data set
             target = torch.max(y,1)[1] #needed for crossentropy
                     
-        
             loss = cost_function(model.forward(x), target)
-
 
             #print("Loss: " ,loss)
             # update the statistics
@@ -77,14 +69,10 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
             #nrCorrectPredictions = 0
             for x, y in test_data:
                 x = x.float()
-                y = y.double()
+                y = y.float()
                 target = torch.max(y,1)[1]
                 loss = cost_function(model.forward(x), target)
                 accumulated_loss += loss.item()
-
-
-                y_pred = cross_val_predict(model, x, y, cv=3)
-                print("y_pred: ", y_pred)
                 
             #update the statistics
             test_loss[-1] = accumulated_loss / len(test_data)
@@ -128,6 +116,7 @@ def validate(test_data, model):
 
         for i in range(config_2D.batchSize):
             if torch.eq(torch.max(model.forward(x), 1)[1][i], label[i]):
+                print("Rätt")
                 nrCorrectPredictions = nrCorrectPredictions + 1
 
     return nrCorrectPredictions
@@ -151,24 +140,24 @@ if __name__ == "__main__":
     print("Done!\n")
 
     original_sample = original_dataset.__getitem__(1)
-    visFuncs_2D.scroll_slices(original_sample, True)
+    original_image = original_sample[0]
+    print(original_image.shape)
+    #visFuncs_2D.show_scan(original_sample, False)
+    
+    transform = config_2D.train_transform
 
     train_size = int(0.8 * len(original_dataset))
     test_size = len(original_dataset) - train_size
     train_dataset, test_dataset = random_split(original_dataset, [train_size, test_size])
-
+    print(len(train_dataset), len(test_dataset))
+    
     print("Apply transformations on train and test dataset!")
     # Apply train and test transforms
     train_transform = config_2D.train_transform
     test_transform = config_2D.test_transform
 
-    train_dataset = ApplyTransform(train_dataset, transform = train_transform)
-    test_dataset = ApplyTransform(test_dataset, transform = test_transform)
-
-    train_sample = train_dataset.__getitem__(0)
-    #visFuncs_2D.show_scan(train_sample)
-
-    print(len(train_dataset), len(test_dataset))
+    train_dataset = transformations_2D.ApplyTransform(original_dataset, sliceNr = 64, applyMean = config_2D.addMeanImage, transform = train_transform)
+    test_dataset = transformations_2D.ApplyTransform(original_dataset, sliceNr = 64, applyMean = config_2D.addMeanImage, transform = test_transform)
     print("Done!\n")
 
     # define the data loaders
@@ -177,8 +166,6 @@ if __name__ == "__main__":
 
     # define the model
     model = model2d.resnet() 
-    #model = model.UNet3D(2, config.nrOfDifferentDiseases)  
-    #model = torchvision.models.googlenet(pretrained=False, progress=True)
  
     # USES FLOAT
     #from torchsummary import summary
@@ -190,18 +177,16 @@ if __name__ == "__main__":
     # define the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr = config_2D.learning_rate)
     
-    from sklearn.model_selection import cross_val_predict
     # run training
     trained_model, training_loss, test_loss = training_session(model, optimizer, cost_function, train_data, test_data)
 
     # evaluate the run
-    #plot_training_test_loss(training_loss, test_loss)
+    plot_training_test_loss(training_loss, test_loss)
 
-    #nrCorrectPredicitons = validate(test_data, trained_model)
-    #print(nrCorrectPredicitons)
+    nrCorrectPredicitons = validate(test_data, trained_model)
+    print(nrCorrectPredicitons)
     #print("Number of correct predictions: ", nrCorrectPredicitons)
     #print("Validation rate: ", nrCorrectPredicitons / len(test_data))
-    
     
     """
     # Plot the training and test results

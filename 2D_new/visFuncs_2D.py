@@ -2,9 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def scroll_slices(sample):
+def scroll_slices(sample, original = False):
     images = sample[0]
-    images = images.permute(1,2,0)
+    if original is False:
+        images = images.permute(1,2,0)
 
     fig, ax = plt.subplots(1, 1)
     class IndexTracker(object):

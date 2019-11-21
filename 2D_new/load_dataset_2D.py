@@ -8,7 +8,7 @@ import random
 # Needed to split the dataset into train/test subsets
 from torch.utils.data import Dataset, Subset, ConcatDataset
 # Our own files
-from create_dataset import ScanDataSet
+from create_dataset_2D import ScanDataSet
 #Standard libraries
 import numpy as np
 

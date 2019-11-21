@@ -1,12 +1,13 @@
 import torchvision.models as models
 import torch.nn as nn
+import config_2D
 
 def resnet():
     model = models.resnet18(pretrained=True) # pretained and settin number of classes
-    model.fc = nn.Linear(512,6)
+    model.fc = nn.Linear(512, config_2D.nrOfDifferentDiseases)
     #changing the initial layer from 3 channels to 160
-    inChannels = 160
-    model.conv1 = nn.Conv2d(inChannels,64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+    inChannels = config_2D.inChannels
+    model.conv1 = nn.Conv2d(inChannels, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 
     #Freezing layers that are already trained, perhaps freeze layer 
 
