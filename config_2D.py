@@ -13,7 +13,7 @@ filetype_SUVR = "1.v"
 filetype_rCBF = "rCBF.v"
 train_transform = TT.Compose([#TT.ToPILImage(),
                               #TT.RandomHorizontalFlip(p = 0.9)])
-                              transformations_2D.noise2(3),
+                              transformations_2D.noise2(0),
                               transformations_2D.RandomRotation(20),
                               TT.ToTensor()])
 
@@ -24,7 +24,7 @@ test_transform = TT.Compose([TT.ToTensor()])
 # ***** load_dataset.py *****
 #
 # Specified in the csv-file
-nrOfDifferentDiseases = 5
+nrOfDifferentDiseases = 6
 # Cropping
 fixed_degrees_z = 20
 nrPixelsTop = 30
@@ -37,9 +37,9 @@ random_degrees_z = 5
 # ***** training.py
 #
 USE_CUDA = True # NO = 0, YES = 1
-epochs = 1
-batchSize = 5
-learning_rate = 0.0001
+epochs = 7
+batchSize = 3
+learning_rate = 0.001
 optimizer = 'Adam'
 
 #

@@ -73,18 +73,25 @@ def training_session(model, optimizer, cost_function, train_data, test_data):
 
             #evaluate the cost function on the test data set
             accumulated_loss = 0
+            #evaluate the number of correct predictions
+            #nrCorrectPredictions = 0
             for x, y in test_data:
-                #x = x.permute(0,4,1,2,3)
                 x = x.float()
                 y = y.double()
                 target = torch.max(y,1)[1]
                 loss = cost_function(model.forward(x), target)
                 accumulated_loss += loss.item()
+
+
+                y_pred = cross_val_predict(model, x, y, cv=3)
+                print("y_pred: ", y_pred)
                 
             #update the statistics
             test_loss[-1] = accumulated_loss / len(test_data)
+
+            #print("Number of correct predictions: ", nrCorrectPredictions)
                 
-        print(f"Epoch {i + 1:2d}: training loss {training_loss[-1]: 9.3f},"f"test loss {test_loss[-1]: 9.3f}")
+        print(f"Epoch {i + 1:2d}: training loss {training_loss[-1]: 9.3f},"f" test loss {test_loss[-1]: 9.3f}")
     
     print("Done!")
     
@@ -131,10 +138,11 @@ class ApplyTransform(Dataset):
         return len(self.dataset)
 
 def validate(test_data, model):
-    correct = 0
+    nrCorrectPredictions = 0
 
     for x,y in test_data:
         x = x.float()
+
         prediction = model.forward(x)
 
         prediction = torch.max(prediction, 1)[1]
@@ -142,13 +150,13 @@ def validate(test_data, model):
 
         label = torch.max(y,1)[1] #needed transformation for crossentropy
 
-        #if torch.eq(prediction, label):
-        #    correct = correct +1
+        print("Prediction: ", torch.max(model.forward(x), 1)[1], " label: ",  label)
 
-        print("prediction: ", prediction)
-        print("label: ", label)
+        for i in range(config_2D.batchSize):
+            if torch.eq(torch.max(model.forward(x), 1)[1][i], label[i]):
+                nrCorrectPredictions = nrCorrectPredictions + 1
 
-    return correct
+    return nrCorrectPredictions
 
 def plot_training_test_loss(training_loss, test_loss):
     import matplotlib.pyplot as plt
@@ -167,7 +175,10 @@ if __name__ == "__main__":
     print("Load dataset without transforms...")
     original_dataset = load_dataset_2D.load_original_dataset()
     print("Done!\n")
-  
+
+    original_sample = original_dataset.__getitem__(1)
+    visFuncs_2D.scroll_slices(original_sample, True)
+
     train_size = int(0.8 * len(original_dataset))
     test_size = len(original_dataset) - train_size
     train_dataset, test_dataset = random_split(original_dataset, [train_size, test_size])
@@ -181,7 +192,7 @@ if __name__ == "__main__":
     test_dataset = ApplyTransform(test_dataset, transform = test_transform)
 
     train_sample = train_dataset.__getitem__(0)
-    visFuncs_2D.show_scan(train_sample)
+    #visFuncs_2D.show_scan(train_sample)
 
     print(len(train_dataset), len(test_dataset))
     print("Done!\n")
@@ -204,18 +215,20 @@ if __name__ == "__main__":
 
     # define the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr = config_2D.learning_rate)
-
-
+    
+    from sklearn.model_selection import cross_val_predict
     # run training
-    #trained_model, training_loss, test_loss = training_session(model, optimizer, cost_function, train_data, test_data)
+    trained_model, training_loss, test_loss = training_session(model, optimizer, cost_function, train_data, test_data)
 
     # evaluate the run
     #plot_training_test_loss(training_loss, test_loss)
 
     #nrCorrectPredicitons = validate(test_data, trained_model)
+    #print(nrCorrectPredicitons)
     #print("Number of correct predictions: ", nrCorrectPredicitons)
     #print("Validation rate: ", nrCorrectPredicitons / len(test_data))
-
+    
+    
     """
     # Plot the training and test results
     plot_training_test_loss(training_loss, test_loss)

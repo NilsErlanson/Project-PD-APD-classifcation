@@ -56,10 +56,9 @@ class ScanDataSet(Dataset):
         labels = tmp_df.Label.astype(np.int64) #Integer labels
         one_hot_encode = list()
         for value in labels:
-            letter = [0 for _ in range(0,6)]
+            letter = [0 for _ in range(0,config_2D.nrOfDifferentDiseases)]
             letter[value] = 1
             one_hot_encode.append(letter)
-
         diseases = np.array(one_hot_encode)
 
         self.disease = diseases
