@@ -3,8 +3,13 @@ import torch.nn as nn
 import config_2D
 
 def resnet():
-    model = models.resnet18(pretrained=True) # pretained and settin number of classes
+    model = models.resnet18(pretrained = True) # pretained and settin number of classes
     model.fc = nn.Linear(512, config_2D.nrOfDifferentDiseases)
+    
+    #model = models.resnet152(pretrained = True) # pretained and settin number of classes
+    #model.fc = nn.Linear(2048, config_2D.nrOfDifferentDiseases)
+
+
     #changing the initial layer from 3 channels to 160
     inChannels = config_2D.inChannels
     model.conv1 = nn.Conv2d(inChannels, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)

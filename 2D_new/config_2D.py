@@ -27,18 +27,27 @@ numberOfmeanslices = 5
 # resent 18
 train_transform = TT.Compose([
     #TT.ToPILImage(),
-    #TT.Resize(256),
+    transformations_2D.resize(),
     #TT.CenterCrop(224),
     TT.ToTensor(),
-    TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+<<<<<<< HEAD
+   # TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+=======
+    #TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+>>>>>>> andreas
 ])
 
 test_transform = TT.Compose([
     #TT.ToPILImage(),
     #TT.Resize(256),
     #TT.CenterCrop(224),
+    transformations_2D.resize(),
     TT.ToTensor(),
-    TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+<<<<<<< HEAD
+   # TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+=======
+    #TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+>>>>>>> andreas
 ])
 
 
@@ -48,21 +57,18 @@ test_transform = TT.Compose([
 #
 # Specified in the csv-file
 nrOfDifferentDiseases = 4
-# Cropping
-fixed_degrees_z = 20
-nrPixelsTop = 30
-nrPixelsBottom = 50
-# Rotation
-random_degrees_x = 20
-random_degrees_z = 5
 
 #
 # ***** training.py
 #
 USE_CUDA = True # NO = 0, YES = 1
-epochs = 10
+<<<<<<< HEAD
+epochs = 20
+=======
+epochs = 5
+>>>>>>> andreas
 batchSize = 4
-learning_rate = 0.001
+learning_rate = 0.0001
 optimizer = 'Adam'
 
 #

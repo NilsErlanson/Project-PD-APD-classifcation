@@ -40,6 +40,7 @@ def getMeanImages(scan, numslices, slice = 64):
     ret = np.zeros((x,y,2))
     ret[:,:,0] = meansuvr
     ret[:,:,1] = meanrcbf
+    
     return ret
 
 class ApplyTransform(Dataset):
@@ -81,6 +82,7 @@ class ApplyTransform(Dataset):
             temp = self.transform(scans)
             scans = temp
             
+        scans = scans
         return scans, disease 
 
     def __len__(self):
@@ -189,6 +191,26 @@ class noise2(object):
         """
 
         img = noisy(img, self.noise_type)
+
+        return img
+
+class resize(object):
+    """ Function to resize object to given size
+
+    return resized object
+
+    """
+    def __call__(self, img,sizetobe=224):
+        """
+        Args:
+            img to be noised, assumes the images are between 0, 1
+
+        Returns:
+            img noised
+        
+        """
+        img = cv2.resize(img,dsize=(sizetobe,sizetobe))
+        
 
         return img
 
