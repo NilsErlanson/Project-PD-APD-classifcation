@@ -27,18 +27,19 @@ numberOfmeanslices = 5
 # resent 18
 train_transform = TT.Compose([
     #TT.ToPILImage(),
-    #TT.Resize(256),
+    transformations_2D.resize(),
     #TT.CenterCrop(224),
     TT.ToTensor(),
-    TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+   # TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
 ])
 
 test_transform = TT.Compose([
     #TT.ToPILImage(),
     #TT.Resize(256),
     #TT.CenterCrop(224),
+    transformations_2D.resize(),
     TT.ToTensor(),
-    TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
+   # TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
 ])
 
 
@@ -60,7 +61,7 @@ random_degrees_z = 5
 # ***** training.py
 #
 USE_CUDA = True # NO = 0, YES = 1
-epochs = 10
+epochs = 20
 batchSize = 4
 learning_rate = 0.001
 optimizer = 'Adam'
