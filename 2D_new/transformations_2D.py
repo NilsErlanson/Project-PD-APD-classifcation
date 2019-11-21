@@ -18,6 +18,76 @@ import scipy.ndimage as scp
 import os
 import cv2
 
+ # ***************** NYTT ******************************
+def getMeanImages(scan, numslices, slice = 64):
+    #returns mean of rcbf and suvr
+    img = scan
+
+    x,y,_,_ = img.shape
+    meansuvr = np.zeros((x, y))
+    meanrcbf = np.zeros((x,y))
+    suvrimg = img [:,:,:,0] # takes out suvr from img
+    rcbfimg = img[:,:,:,1]
+
+
+    for i in range (slice-numslices, slice+numslices):
+        meansuvr += suvrimg[:,:,i]
+        meanrcbf += rcbfimg[:,:,i]
+
+    meanrcbf = meanrcbf/(2*numslices)
+    meansuvr = meansuvr/(2*numslices)
+
+    ret = np.zeros((x,y,2))
+    ret[:,:,0] = meansuvr
+    ret[:,:,1] = meanrcbf
+    return ret
+
+class ApplyTransform(Dataset):
+    """
+    Apply transformations to a Dataset
+
+    Arguments:
+        dataset (Dataset): A Dataset that returns (sample, target)
+        transform (callable, optional): A function/transform to be applied on the sample
+        target_transform (callable, optional): A function/transform to be applied on the target
+
+    """
+    def __init__(self, dataset, sliceNr = None, applyMean = False, transform = None):
+        self.dataset = dataset
+        self.transform = transform
+        self.sliceSample = sliceNr
+        self.applyMean = applyMean
+
+    def __getitem__(self, idx):
+        scans, disease = self.dataset[idx]
+        
+        if self.applyMean is True and self.sliceSample is not None:
+            shape = np.shape(scans)
+            temp = np.zeros((shape[0],shape[1],shape[3]+2))
+            meanImgs = getMeanImages(scans, config_2D.numberOfmeanslices, config_2D.sliceSample)
+            temp[:,:,0] = scans[:,:,self.sliceSample,0]
+            temp[:,:,1] = scans[:,:,self.sliceSample,1]
+            temp[:,:,2] = meanImgs[:,:,0]
+            temp[:,:,3] = meanImgs[:,:,1]
+            scans = temp
+
+        # Fetch the samples specified in the configuration file
+        if self.applyMean is False and self.sliceSample is not None:
+            temp = scans[:,:,self.sliceSample,:]
+            scans = temp
+            
+        # Apply transform specified in the configuration file
+        if self.transform is not None:
+            temp = self.transform(scans)
+            scans = temp
+            
+        return scans, disease 
+
+    def __len__(self):
+        return len(self.dataset)
+ # ***************** NYTT ******************************
+
+
 def noisy(image, noise_type):
     if noise_type is 0: #GAUSSIAN NOISE
         #row, col, ch = image.shape
