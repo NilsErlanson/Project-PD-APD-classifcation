@@ -3,7 +3,6 @@ import numpy as np
 import random
 import numbers
 
-
 from torch.utils.data import Dataset
 from PIL import Image, ImageOps, ImageEnhance, __version__ as PILLOW_VERSION
 
@@ -19,6 +18,33 @@ import os
 import cv2
 
  # ***************** NYTT ******************************
+def getMultipleSliceImages(scans, sliceSample = config_2D.sliceSample):  
+    shape = np.shape(scans)
+    #Create a holder for the return images
+    multipleImages = np.zeros((shape[0]*3,shape[1]*3, 2))
+    
+    suvr = np.block([[scans[:,:,sliceSample-4,0],scans[:,:,sliceSample-3,0], scans[:,:,sliceSample-2,0]],
+                    [scans[:,:,sliceSample-1,0],scans[:,:,sliceSample,0], scans[:,:,sliceSample+1,0]],
+                    [scans[:,:,sliceSample+2,0],scans[:,:,sliceSample+3,0], scans[:,:,sliceSample+4,0]]])
+    
+    rcbf = np.block([[scans[:,:,sliceSample-4,1],scans[:,:,sliceSample-3,1], scans[:,:,sliceSample-2,1]],
+                [scans[:,:,sliceSample-1,1],scans[:,:,sliceSample,1], scans[:,:,sliceSample+1,1]],
+                [scans[:,:,sliceSample+2,1],scans[:,:,sliceSample+3,1], scans[:,:,sliceSample+4,1]]])
+    
+    multipleImages[:,:,0] = suvr
+    multipleImages[:,:,1] = rcbf
+
+    return multipleImages
+
+
+def crop_center(scans, cropx = config_2D.cropx, cropy = config_2D.cropy):
+    y,x,c = scans.shape
+    startx = x//2 - cropx//2
+    starty = y//2 - cropy//2  
+
+    return scans[starty:starty + cropy, startx:startx + cropx, :]
+
+
 def getMeanImages(scan, numslices, slice = 64):
     #returns mean of rcbf and suvr
     img = scan
@@ -53,11 +79,12 @@ class ApplyTransform(Dataset):
         target_transform (callable, optional): A function/transform to be applied on the target
 
     """
-    def __init__(self, dataset, sliceNr = None, applyMean = False, transform = None):
+    def __init__(self, dataset, sliceNr = None, applyMean = False, useMultipleSlices = False, transform = None):
         self.dataset = dataset
         self.transform = transform
         self.sliceSample = sliceNr
         self.applyMean = applyMean
+        self.useMultipleSlices = useMultipleSlices
 
     def __getitem__(self, idx):
         scans, disease = self.dataset[idx]
@@ -76,13 +103,18 @@ class ApplyTransform(Dataset):
         if self.applyMean is False and self.sliceSample is not None:
             temp = scans[:,:,self.sliceSample,:]
             scans = temp
+
+        if self.useMultipleSlices is True:
+            cropped_scans = crop_center(scans)
+            temp = getMultipleSliceImages(cropped_scans)
+            scans = temp
             
         # Apply transform specified in the configuration file
         if self.transform is not None:
             temp = self.transform(scans)
             scans = temp
             
-        scans = scans
+        #scans = scans
         return scans, disease 
 
     def __len__(self):
@@ -209,7 +241,7 @@ class resize(object):
             img noised
         
         """
-        img = cv2.resize(img,dsize=(sizetobe,sizetobe))
+        img = cv2.resize(img, dsize=(sizetobe,sizetobe))
         
 
         return img
