@@ -18,10 +18,6 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 # To create the torchs Datasets 
 from torch.utils.data import Dataset, ConcatDataset
-# To rotate the images
-import scipy.ndimage
-# Our own files
-#import numpydataset
 
 
 class ScanDataSet(Dataset):
@@ -113,9 +109,6 @@ def normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_
     images[:,:,:,0] = (images[:,:,:,0] - min_value_suvr) / (-min_value_suvr + max_value_suvr)
     images[:,:,:,1] = (images[:,:,:,1] - min_value_rcbf) / (-min_value_rcbf + max_value_rcbf)
 
-    #images[:,:,:,0] = (images[:,:,:,0] - mean_SUVR) / std_SUVR
-    #images[:,:,:,1] = (images[:,:,:,1] - mean_rCBF) / std_rCBF
-
     return images
 
 # ************************* HELP FUNCTIONS ********************************
@@ -161,7 +154,6 @@ if __name__ == "__main__":
 
     print("Done")
 
-    
     
 
    
