@@ -47,6 +47,7 @@ class ScanDataSet(Dataset):
  
         return scans, disease
 
+
     def _init_dataset(self):
         # ***** Read the disease labels from a csv file (saved from the patientlist in the xlms file) *****
         tmp_df = pd.read_csv(self.label_root)
@@ -86,11 +87,11 @@ class ScanDataSet(Dataset):
         # Fetch a reference image to be able to create the right dimensions on the images
         refImg = ecat.load(listFilesECAT_SUVR[0]).get_frame(0)
 
-        images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
-
         # Preprocess our data
         # Load the whole dataset and save into numpy array and perform cropping and rotation around x-axis
         for nr in range(np.size(listFilesECAT_SUVR)):
+            images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
+
              #Load the SUVR image
             images[:,:,:,0] = ecat.load(listFilesECAT_SUVR[nr]).get_frame(0)
             #Load the rCBF image

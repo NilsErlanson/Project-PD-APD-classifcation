@@ -40,7 +40,20 @@ def getMeanImages(scan, numslices, slice = 64):
     ret = np.zeros((x,y,2))
     ret[:,:,0] = meansuvr
     ret[:,:,1] = meanrcbf
+    
     return ret
+
+def getMeanNormalbrain(dataset,slicenum = 64):
+    #return the mean brain, the dataset is hardcoded to be normal brains in the range 12,18
+    meannormalbrain = np.zeros((128,128)) #store the mean brain of all the normal suvr brains
+    for i in range(12,18):
+        scan,_ = dataset[i]
+        img_suvr = scan[:,:,slicenum,0]
+        meannormalbrain += img_suvr
+
+    meannormalbrain = meannormalbrain/(18-12)
+    return meannormalbrain
+    
 
 class ApplyTransform(Dataset):
     """
@@ -52,11 +65,17 @@ class ApplyTransform(Dataset):
         target_transform (callable, optional): A function/transform to be applied on the target
 
     """
-    def __init__(self, dataset, sliceNr = None, applyMean = False, transform = None):
+    
+    def __init__(self, dataset, sliceNr = None, applyMean = False,normalbrain = False, transform = None):
         self.dataset = dataset
         self.transform = transform
         self.sliceSample = sliceNr
         self.applyMean = applyMean
+        self.applyNormalbrain = normalbrain
+        if normalbrain is True:
+            self.meannormalbrain  = getMeanNormalbrain(dataset)
+        
+    
 
     def __getitem__(self, idx):
         scans, disease = self.dataset[idx]
@@ -75,17 +94,22 @@ class ApplyTransform(Dataset):
         if self.applyMean is False and self.sliceSample is not None:
             temp = scans[:,:,self.sliceSample,:]
             scans = temp
+        # Apply transform to take the difference between meannormal brain and currentbrain    
+        if self.applyNormalbrain is True:
+            scans[:,:,2] = np.abs(scans[:,:,0]-self.meannormalbrain)
             
         # Apply transform specified in the configuration file
         if self.transform is not None:
             temp = self.transform(scans)
             scans = temp
+
             
         scans = scans
         return scans, disease 
 
     def __len__(self):
         return len(self.dataset)
+    
  # ***************** NYTT ******************************
 
 

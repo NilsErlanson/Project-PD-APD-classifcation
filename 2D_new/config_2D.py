@@ -15,6 +15,7 @@ filetype_rCBF = "rCBF.v"
 sliceSample = 64 # If one wants the whole dataset, put None
 addMeanImage = True # or True
 numberOfmeanslices = 5
+adddiffNormal= True
 
 #train_transform = TT.Compose([#TT.ToPILImage(),
                               #TT.RandomHorizontalFlip(p = 0.9)])
@@ -30,7 +31,6 @@ train_transform = TT.Compose([
     transformations_2D.resize(),
     #TT.CenterCrop(224),
     TT.ToTensor(),
-   # TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
 ])
 
 test_transform = TT.Compose([
@@ -39,31 +39,23 @@ test_transform = TT.Compose([
     #TT.CenterCrop(224),
     transformations_2D.resize(),
     TT.ToTensor(),
-   # TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
 ])
-
-
 
 #
 # ***** load_dataset.py *****
 #
 # Specified in the csv-file
 nrOfDifferentDiseases = 4
-# Cropping
-fixed_degrees_z = 20
-nrPixelsTop = 30
-nrPixelsBottom = 50
-# Rotation
-random_degrees_x = 20
-random_degrees_z = 5
 
 #
 # ***** training.py
 #
 USE_CUDA = True # NO = 0, YES = 1
-epochs = 20
+
+epochs = 10
+
 batchSize = 4
-learning_rate = 0.001
+learning_rate = 0.0001
 optimizer = 'Adam'
 
 #
