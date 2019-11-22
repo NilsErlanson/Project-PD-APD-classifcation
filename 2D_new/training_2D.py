@@ -14,6 +14,7 @@ import load_dataset_2D
 import visFuncs_2D
 import transformations_2D
 from create_dataset_2D import ScanDataSet
+import matplotlib.pyplot as plt
 
 import pandas as pd
 import numpy as np
@@ -152,8 +153,8 @@ def kfold(original_dataset, k = 20):
         train_dataset, test_dataset = random_split(original_dataset, [train_size, test_size])
 
         # Apply the tran/test transforms defined in config_2D
-        train_dataset = transformations_2D.ApplyTransform(train_dataset, sliceNr = config_2D.sliceSample, applyMean = config_2D.addMeanImage, transform = train_transform)
-        test_dataset = transformations_2D.ApplyTransform(test_dataset, sliceNr = config_2D.sliceSample, applyMean = config_2D.addMeanImage, transform = test_transform)
+        train_dataset = transformations_2D.ApplyTransform(train_dataset, sliceNr = config_2D.sliceSample, applyMean = config_2D.addMeanImage,normalbrain=config_2D.adddiffNormal, transform = train_transform)
+        test_dataset = transformations_2D.ApplyTransform(test_dataset, sliceNr = config_2D.sliceSample, applyMean = config_2D.addMeanImage,normalbrain=config_2D.adddiffNormal, transform = test_transform)
 
         # define the data loaders
         train_data = torch.utils.data.DataLoader(train_dataset, batch_size = config_2D.batchSize, shuffle=True)
@@ -197,13 +198,19 @@ if __name__ == "__main__":
     print("Load dataset without transforms...")
     original_dataset = load_dataset_2D.load_original_dataset()
     print("Done!\n")
+    train_size = int(0.95 * len(original_dataset))
+    test_size = len(original_dataset) - train_size
+    train_dataset, test_dataset = random_split(original_dataset, [train_size, test_size])
 
-    #train_transform = config_2D.train_transform
-    #original_dataset = transformations_2D.ApplyTransform(original_dataset, sliceNr = 64, applyMean = False, transform = train_transform)
+    # train_transform = config_2D.train_transform
+    # transdataset = transformations_2D.ApplyTransform(original_dataset, sliceNr = config_2D.sliceSample, applyMean = config_2D.addMeanImage,normalbrain=config_2D.adddiffNormal, transform = train_transform)
 
-    accuracy = kfold(original_dataset, len(original_dataset))
+    # sample1 = transdataset[0][0]
+    # plt.imshow(sample1[2,:,:])
+    # plt.show()
+    #accuracy = kfold(original_dataset, len(original_dataset))
 
-    """
+    
     print("Apply transformations on train and test dataset!")
     # Apply train and test transforms
     train_transform = config_2D.train_transform
@@ -260,5 +267,4 @@ if __name__ == "__main__":
     axs[1, 2].imshow(images[60,:,:,1], cmap = 'hot') #rCBF
     axs[1, 2].set_title(['rcbf, rotated '])
     plt.show()    
-    """
 

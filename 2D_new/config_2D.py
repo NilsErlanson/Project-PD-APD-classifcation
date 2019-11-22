@@ -12,10 +12,14 @@ label_root = '../projectfiles_PE2I/patientlist.csv'
 filetype_SUVR = "1.v"
 filetype_rCBF = "rCBF.v"
 
+cropx = 110
+cropy = 90
+
 sliceSample = 64 # If one wants the whole dataset, put None
 addMeanImage = False # or True
 numberOfmeanslices = 5
 useMultipleSlices = True
+adddiffNormal= True
 
 #train_transform = TT.Compose([#TT.ToPILImage(),
                               #TT.RandomHorizontalFlip(p = 0.9)])
@@ -31,20 +35,17 @@ train_transform = TT.Compose([
     transformations_2D.resize(),
     #TT.CenterCrop(224),
     TT.ToTensor(),
-    #TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
 ])
 
 test_transform = TT.Compose([
     #TT.ToPILImage(),
     #TT.Resize(256),
     #TT.CenterCrop(224),
-    transformations_2D.resize(),
+    #transformations_2D.resize(),
     TT.ToTensor(),
     #TT.Normalize(mean=[0.5, 0.5, 0.5, 0.5], std=[0.25, 0.25, 0.25, 0.25]),
 ])
 
-cropx = 110
-cropy = 90
 
 #
 # ***** load_dataset.py *****
