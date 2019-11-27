@@ -22,6 +22,8 @@ from torch.utils.data import Dataset, ConcatDataset
 import scipy.ndimage
 # Our own files
 import numpydataset
+# To be able to generate a random number
+import random
 
 class ApplyTransform(Dataset):
     """
@@ -43,7 +45,9 @@ class ApplyTransform(Dataset):
         scans, disease = self.dataset[idx]
     
         if self.applyGammaTransformation is not None:
-            scans = np.power(scans, self.applyGammaTransformation)
+            rand = (random.random() * self.applyGammaTransformation) + 0.95
+            scans = np.power(scans, rand)
+            #scans = np.power(scans, self.applyGammaTransformation)
             
         return scans, disease 
 

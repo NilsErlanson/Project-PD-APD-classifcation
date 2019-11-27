@@ -67,14 +67,19 @@ def getMeanImages(scan, numslices, slice = 64):
 def getMeanNormalbrain(dataset, slicenum = 64):
     #return the mean brain, the dataset is hardcoded to be normal brains in the range 12,18
     meannormalbrain = np.zeros((128,128)) #store the mean brain of all the normal suvr brains
-    for i in range(12,18):
-        scan,_ = dataset[i]
-        img_suvr = scan[:,:,slicenum,0]
-        meannormalbrain += img_suvr
-
-    meannormalbrain = meannormalbrain/(18-12)
+    counter = 0
+    for i in range(len(dataset)): # iteratets through the current dataset and extracts the mean normal brain
+        
+        scan,label = dataset[i]
+        if np.array_equal(label,[1,0,0,0]): #checks if it is a normal brain
+            counter += 1
+            img_suvr = scan[:,:,slicenum,0] #then retrivies normal brain
+            meannormalbrain += img_suvr # annd adds
+    if counter == 0:
+        meannormalbrain = meannormalbrain/1
+    else:
+        meannormalbrain = meannormalbrain/(counter)
     return meannormalbrain
-    
 
 class ApplyTransform(Dataset):
     """
@@ -86,9 +91,9 @@ class ApplyTransform(Dataset):
         target_transform (callable, optional): A function/transform to be applied on the target
 
     """
-    #def __init__(self, dataset, sliceNr = None, applyMean = False, useMultipleSlices = False, transform = None):
     
-    def __init__(self, dataset, sliceNr = None, applyMean = False, normalbrain = False, useMultipleSlices = False, gammaTransform = None, transform = None):
+    def __init__(self, dataset, sliceNr = None, applyMean = False, applyDiffnormal = False, meantrainbrain= None, 
+                 useMultipleSlices = False, gammaTransform = None, transform = None):
         self.dataset = dataset
         self.transform = transform
 
@@ -100,20 +105,20 @@ class ApplyTransform(Dataset):
 
         self.applyMean = applyMean
         self.useMultipleSlices = useMultipleSlices
-        self.applyNormalbrain = normalbrain
+        self.applyDiffnormal = applyDiffnormal
         self.applyGammaTransformation = gammaTransform
+        self.meantrainbrain = meantrainbrain
 
-        if normalbrain is True:
+        if applyDiffnormal is True:
             self.meannormalbrain = getMeanNormalbrain(dataset, self.sliceSample)
+        else:
+            self.meannormalbrain = None
 
     def __getitem__(self, idx):
         scans, disease = self.dataset[idx]
 
         # Set new sliceSample + [-3, 3]
-
         sliceSampleNew = self.sliceSample + random.randint(-1,1)
-        print(sliceSampleNew)
-        #sliceSampleNew = self.sliceSample
 
         if self.applyMean is True and sliceSampleNew is not None:
             shape = np.shape(scans)
@@ -137,8 +142,11 @@ class ApplyTransform(Dataset):
                 scans = temp
             
         # Apply transform to take the difference between meannormal brain and currentbrain    
-        if self.applyNormalbrain is True:
-            scans[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain)
+        if self.applyDiffnormal is True:
+            if self.meantrainbrain is not None: # this is for test data
+                scans[:,:,2] = np.abs(scans[:,:,0]- self.meantrainbrain)
+            else:
+                scans[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain)
 
         if self.applyGammaTransformation is not None:
             rand = (random.random() * self.applyGammaTransformation) + 0.95
@@ -181,3 +189,4 @@ class mirrorImage(object):
             images = cv2.flip(images, 0)
 
         return images
+

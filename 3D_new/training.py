@@ -18,6 +18,7 @@ from create_dataset import ScanDataSet
 import pandas as pd
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 from torch.utils.data import DataLoader, random_split, Subset
 
@@ -107,9 +108,11 @@ def training_session(device, model, optimizer, cost_function, train_data, test_d
 def kfold(device, original_dataset, k = 20):
     # Create matrix to save the accuracy and the test losses
     accuracy = np.zeros((len(original_dataset), 3))
+    test_losses = np.zeros((len(original_dataset), config.epochs))
+    train_losses = np.zeros((len(original_dataset), config.epochs))
 
     # Apply the tran/test transforms defined in config_2D
-    original_dataset = create_dataset.ApplyTransform(original_dataset, gammaTransform = config.applyGammaTransformation)
+    original_dataset = create_dataset.ApplyTransform(original_dataset, gammaTransform = config.gamma)
     
     # Count the number of samples in each class and create a vector in order to create weigths for the weighted sampling
     class_sample_count_original = find_class_sample_count(original_dataset)
@@ -126,6 +129,10 @@ def kfold(device, original_dataset, k = 20):
         weights = 1 / torch.Tensor(class_sample_count)
         weights = weights.double()
         sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, num_samples = len(weights) - 3, replacement = False)
+
+        #seed = 2147483647 + j + 1
+        #torch.manual_seed(seed)
+        #random.seed(seed)  # Python random module.
 
         # Split the dataset into training/test, 1-fold validation
         test_index = [j]  
@@ -148,7 +155,7 @@ def kfold(device, original_dataset, k = 20):
         optimizer = torch.optim.Adam(model2.parameters(), lr = config.learning_rate)
 
         # run training
-        trained_model,_,test_loss = training_session(device, model2, optimizer, cost_function, train_data, test_data)
+        trained_model,train_loss,test_loss = training_session(device, model2, optimizer, cost_function, train_data, test_data)
 
         # Check if the model do the right predictions
         for x, y in test_data:
@@ -167,7 +174,11 @@ def kfold(device, original_dataset, k = 20):
             accuracy[j,1] = prediction
             accuracy[j,2] = label
 
-    return accuracy
+            #Store a metric for the train/test loss of the training
+            test_losses[j,:] = np.asarray(test_loss)
+            train_losses[j,:] = np.asarray(train_loss)
+
+    return accuracy, train_losses, test_losses
 
 def plot_training_test_loss(training_loss, test_loss):
     import matplotlib.pyplot as plt
@@ -176,6 +187,19 @@ def plot_training_test_loss(training_loss, test_loss):
     iterations = np.arange(1, len(training_loss) + 1)
     plt.scatter(iterations, training_loss, label='training loss')
     plt.scatter(iterations, test_loss, label='test loss')
+    plt.legend()
+    plt.xlabel('iteration')
+    plt.show() 
+
+def plot_k_fold(train_losses, test_losses):
+    mean_train = np.mean(train_losses, axis=0)
+    mean_test = np.mean(test_losses, axis=0)
+
+    # plot loss
+    plt.figure()
+    iterations = np.arange(1, len(mean_train) + 1)
+    plt.scatter(iterations, mean_train, label = 'mean training loss')
+    plt.scatter(iterations, mean_test, label = 'mean test loss')
     plt.legend()
     plt.xlabel('iteration')
     plt.show()   
@@ -194,7 +218,7 @@ if __name__ == "__main__":
     original_dataset = load_dataset.load_datasets()
     
     # Try to apply gamma transformation
-    original_dataset = create_dataset.ApplyTransform(original_dataset, config.applyGammaTransformation)
+    original_dataset = create_dataset.ApplyTransform(original_dataset, gammaTransform = config.gamma)
 
     """
     # Define the test and train sizes

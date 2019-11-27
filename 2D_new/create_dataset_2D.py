@@ -99,6 +99,10 @@ class ScanDataSet(Dataset):
 
             # Normalize the image
             normalized_images = normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf)
+            
+            # PROVA MINMAXSCALER FROM SKLEARN!
+            
+            #normalized_images = normalize_image(images, 0, 900, 0, 270)
 
             #Append the preprocessed data into samples
             self.samples.append((normalized_images, diseases[nr,:]))

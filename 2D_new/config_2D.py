@@ -16,16 +16,22 @@ filetype_rCBF = "rCBF.v"
 sliceSample = 64
 addMeanImage = True 
 numberOfmeanslices = 5
-adddiffNormal= True
+applydiffnormal = False
 useMultipleSlices = False
 cropx = 110
 cropy = 90
 gamma = 0.2
 
 # resent
-transform = TT.Compose([
-    #transformations_2D.resize(),
+transform_train = TT.Compose([
+    transformations_2D.resize(),
     transformations_2D.mirrorImage(),
+    TT.ToTensor()
+])
+
+transform_test = TT.Compose([
+    #transformations_2D.resize(),
+    #transformations_2D.mirrorImage(),
     TT.ToTensor()
 ])
 
