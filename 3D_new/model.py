@@ -4,6 +4,7 @@
 
 import torch
 from torch.nn import functional as F
+import config
 
 class SimpleCNN(torch.nn.Module):
     
@@ -13,8 +14,8 @@ class SimpleCNN(torch.nn.Module):
         super(SimpleCNN, self).__init__()
         self.conv1 = torch.nn.Conv3d(in_channels = 2, out_channels = 2, kernel_size = (3,3,3), stride = 10, padding = 1)
         self.Flatten = torch.nn.Flatten()
-        self.fc1 = torch.nn.Linear(2704, 200)
-        self.fc2 = torch.nn.Linear(200, 6)
+        self.fc1 = torch.nn.Linear(1600, 200)
+        self.fc2 = torch.nn.Linear(200, config.nrOfDifferentDiseases)
         
     def forward(self, x):
         x = F.relu(self.conv1(x))

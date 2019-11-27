@@ -23,6 +23,33 @@ import scipy.ndimage
 # Our own files
 import numpydataset
 
+class ApplyTransform(Dataset):
+    """
+    Apply transformations to a Dataset
+
+    Arguments:
+        dataset (Dataset): A Dataset that returns (sample, target)
+        transform (callable, optional): A function/transform to be applied on the sample
+        target_transform (callable, optional): A function/transform to be applied on the target
+
+    """
+    #def __init__(self, dataset, sliceNr = None, applyMean = False, useMultipleSlices = False, transform = None):
+    
+    def __init__(self, dataset, gammaTransform = None):
+        self.dataset = dataset
+        self.applyGammaTransformation = gammaTransform
+
+    def __getitem__(self, idx):
+        scans, disease = self.dataset[idx]
+    
+        if self.applyGammaTransformation is not None:
+            scans = np.power(scans, self.applyGammaTransformation)
+            
+        return scans, disease 
+
+    def __len__(self):
+        return len(self.dataset)
+
 
 class ScanDataSet(Dataset):
     def __init__(self, image_root, label_root, filetype_SUVR, filetype_rCBF):
@@ -34,7 +61,6 @@ class ScanDataSet(Dataset):
         self.samples = []
         self.disease = LabelEncoder()
         self.labelName = []
-        #self.transform = transform
         self._init_dataset()
 
     def __len__(self):
@@ -57,7 +83,7 @@ class ScanDataSet(Dataset):
         labels = tmp_df.Label.astype(np.int64) #Integer labels
         one_hot_encode = list()
         for value in labels:
-            letter = [0 for _ in range(0,6)]
+            letter = [0 for _ in range(0, config.nrOfDifferentDiseases)]
             letter[value] = 1
             one_hot_encode.append(letter)
 
@@ -90,7 +116,9 @@ class ScanDataSet(Dataset):
 
         #Create an array to store the scans of all the patients
         images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
-        cropped_images = np.zeros((np.size(listFilesECAT_SUVR),np.shape(refImg)[0],np.shape(refImg)[1], config.nrPixelsTop +config.nrPixelsBottom, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
+        cropped_images_z = np.zeros((np.size(listFilesECAT_SUVR),np.shape(refImg)[0],np.shape(refImg)[1], config.nrPixelsTop +config.nrPixelsBottom, 2)) #28 x 128 x 128 x 80 x 2 - HARD CODED CROP top = 30, bottom = 50
+        
+        cropped_images_xy = np.zeros((np.size(listFilesECAT_SUVR), config.cropx, config.cropx, config.nrPixelsTop + config.nrPixelsBottom, 2)) 
 
         # Preprocess our data
         # Load the whole dataset and save into numpy array and perform cropping and rotation around x-axis
@@ -99,47 +127,35 @@ class ScanDataSet(Dataset):
             images[:,:,:,0] = ecat.load(listFilesECAT_SUVR[nr]).get_frame(0)
             #Load the rCBF image
             images[:,:,:,1] = ecat.load(listFilesECAT_rCBF[nr]).get_frame(0)
-
             
             # Crops the z-axis and stores all of the cropped images to be able to calculate the statistics before normalization
+            cropped_images_z = crop_z_axis(images)
             
-            cropped_images = crop_z_axis(images)
+            # Crops the x and y-axis and stores all of the cropped images to be able to calculate the statistics before normalization
+            cropped_images_xy = crop_center(cropped_images_z)
 
-            min_value_suvr, max_value_suvr = cropped_images[:,:,:,0].min(), cropped_images[:,:,:,0].max()
-            min_value_rcbf, max_value_rcbf = cropped_images[:,:,:,1].min(), cropped_images[:,:,:,1].max()
+            min_value_suvr, max_value_suvr = cropped_images_xy[:,:,:,0].min(), cropped_images_xy[:,:,:,0].max()
+            min_value_rcbf, max_value_rcbf = cropped_images_xy[:,:,:,1].min(), cropped_images_xy[:,:,:,1].max()
 
             # Normalize the image
-            image = normalize_image(cropped_images, min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf)
+            image = normalize_image(cropped_images_xy, min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf)
 
             #normalize the data in the range [0,1]
-
-
             self.samples.append((image, diseases[nr,:]))
 
 
-
-
-        # #  Calculate statistics in order to be able to normalize the dataset
-        # mean_SUVR, std_SUVR, mean_rCBF, std_rCBF = calculate_mean_std(cropped_images) 
-        # print(mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
-
-        # # Normalize the data and append them into samples with the corresponding label
-        # for nr in range(np.size(listFilesECAT_SUVR)):
-        #     normalized_images = normalize_image(cropped_images[nr,:,:,:,:], mean_SUVR, std_SUVR, mean_rCBF, std_rCBF)
-
-        #     #Append the preprocessed data into samples
-
-
 # ********************* PREPROCESSING FUNCTIONS ****************************
+def crop_center(scans, cropx = None, cropy = None):
+    if cropx is None:
+        cropx = config.cropx
+    if cropy is None:
+        cropy = config.cropy
 
-# Rotates the image around x-axis with 20 degrees
-def rotate_image_around_x(images, degrees = config.fixed_degrees_z):
+    x,y,_,_ = scans.shape
+    startx = x//2 - cropx//2
+    starty = y//2 - cropy//2  
     
-    #Rotate around x-axis to align the brain with the vertical line
-    images[:,:,:,0] = scipy.ndimage.interpolation.rotate(images[:,:,:,0], -degrees, axes = (1,2), reshape = False) #SUVr
-    images[:,:,:,1] = scipy.ndimage.interpolation.rotate(images[:,:,:,1], -degrees, axes = (1,2), reshape = False) #rCBF
-
-    return images
+    return scans[startx:startx + cropx, starty:starty + cropy, :, :]
 
 # Crops the images in the z-direction
 def crop_z_axis(images, nrPixelsTop = config.nrPixelsTop, nrPixelsBottom = config.nrPixelsBottom):
@@ -165,60 +181,6 @@ def normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_
     images[:,:,:,1] = (images[:,:,:,1] - min_value_rcbf) / (-min_value_rcbf + max_value_rcbf)
 
     return images
-
-# Calculates the mean and standard deviance of the whole dataset
-def calculate_mean_std(images):
-    #input is (128,128,80,2)
-    #return (images[:,:,:,:,0].mean(), np.sqrt(images[:,:,:,:,0].var()), images[:,:,:,:,1].mean(), np.sqrt(images[:,:,:,:,1].var()))
-    mean_SUVR = images.mean()
-    mean_rCBF = images.mean()
-    std_SUVR = np.sqrt(images.var())
-    std_rcbf = np.sqrt(images.var())
-    
-    return mean_SUVR, std_SUVR, mean_rCBF, std_rcbf
-# ********************* AUGMENTATION FUNCTIONS *****************************
-
-# Applies Gaussian distributed random noise to the dataset
-def noise_dataset(original_dataset):
-    #Fetch reference sample in order to create matrix to be able to save all of the images
-    scan, dis = original_dataset[0]
-    shape = scan.shape
-    noisenp = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
-    labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
-
-    for i in range(len(original_dataset)):
-        randomNoise = np.random.rand(shape[0], shape[1], shape[2], 2)
-        scan,dis = original_dataset[i]
-        noisenp[i,:,:,:,:] = np.add(scan, randomNoise) # Adding random noise from the standard nornmal dist
-        labelsnp[i,:] = dis
-
-    # Casts the numpy array to the class "Dataset"
-    noise_dataset  = numpydataset.numpy_to_dataset(noisenp,labelsnp)
-    return noise_dataset
-
-# Rotates the datasets randomly with 20 degrees around z-axis, 5 degrees around x-axis
-def rotate_dataset_around_z(original_dataset, degree_x = config.random_degrees_x, degree_z = config.random_degrees_z):
-    #Fetch reference sample
-    scan, dis = original_dataset[0]
-    shape = scan.shape
-    rotatep = np.zeros((len(original_dataset),shape[0],shape[1],shape[2],2))
-    labelsnp = np.zeros((len(original_dataset),dis.shape[0]))
-
-
-    for i in range(len(original_dataset)):
-        scan, dis = original_dataset[i]
-        rand_rot_z = np.random.uniform(-degree_x, degree_x)
-        rand_rot_x = np.random.uniform(-degree_z, degree_z)  
-        rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(scan[:,:,:,0], rand_rot_z, axes = (0,1), reshape = False) #SUVr
-        rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(scan[:,:,:,1], rand_rot_z, axes = (0,1), reshape = False) #rCBF
-        rotatep[i,:,:,:,0] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,0], rand_rot_x, axes = (1,2), reshape = False) #SUVr
-        rotatep[i,:,:,:,1] = scipy.ndimage.interpolation.rotate(rotatep[i,:,:,:,1], rand_rot_x, axes = (1,2), reshape = False) #rCBF 
-        labelsnp[i,:] = dis
-
-    rotate_dataset  = numpydataset.numpy_to_dataset(rotatep,labelsnp)
-    return rotate_dataset
-
-
 
 # ************************* HELP FUNCTIONS ********************************
 def find_centered_pixel(images):
@@ -256,19 +218,12 @@ if __name__ == "__main__":
     original_dataset = ScanDataSet(image_root, label_root, filetype_SUVR, filetype_rCBF)
     print("Done\n")
 
-    """
-    hickle.dump(augmented_dataset, 'augmented_dataset.hickle', mode = 'w')
-    hickle.dump(original_dataset, 'original_dataset.hickle', mode = 'w')
-    """
-    
-
     print("Saving the files into folders")
 
     # Save the original preprocessed dataset 
     pickle_out2 = open("original_dataset.pickle","wb")
     pickle.dump(original_dataset, pickle_out2)
     pickle_out2.close()
-
 
     print("Done")
     

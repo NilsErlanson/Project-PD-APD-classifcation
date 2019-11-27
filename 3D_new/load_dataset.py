@@ -77,15 +77,4 @@ def load_datasets():
     return original_dataset
 
 if __name__ == "__main__":
-    #original, augmented = load_datasets()  
-    original = load_datasets()  
-
-    sample = original[0]
-    print(sample[0].shape)
-    print(np.max(sample[0]))
-    visFuncs.show_scan(sample)
-
-
-
-    print(original)
-
+    original_dataset = load_datasets()  

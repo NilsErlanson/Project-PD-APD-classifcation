@@ -5,7 +5,7 @@ import numpy as np
 import numbers
 import scipy.ndimage as scp
 import cv2
-
+import random
 
 def getMultipleSliceImages(scans, sliceSample = None):  
     if sliceSample is None:
@@ -47,7 +47,7 @@ def getMeanImages(scan, numslices, slice = 64):
     x,y,_,_ = img.shape
     meansuvr = np.zeros((x, y))
     meanrcbf = np.zeros((x,y))
-    suvrimg = img [:,:,:,0] # takes out suvr from img
+    suvrimg = img[:,:,:,0] # takes out suvr from img
     rcbfimg = img[:,:,:,1]
 
 
@@ -64,7 +64,7 @@ def getMeanImages(scan, numslices, slice = 64):
     
     return ret
 
-def getMeanNormalbrain(dataset,slicenum = 64):
+def getMeanNormalbrain(dataset, slicenum = 64):
     #return the mean brain, the dataset is hardcoded to be normal brains in the range 12,18
     meannormalbrain = np.zeros((128,128)) #store the mean brain of all the normal suvr brains
     for i in range(12,18):
@@ -88,43 +88,61 @@ class ApplyTransform(Dataset):
     """
     #def __init__(self, dataset, sliceNr = None, applyMean = False, useMultipleSlices = False, transform = None):
     
-    def __init__(self, dataset, sliceNr = None, applyMean = False, normalbrain = False, useMultipleSlices = False, transform = None):
+    def __init__(self, dataset, sliceNr = None, applyMean = False, normalbrain = False, useMultipleSlices = False, gammaTransform = None, transform = None):
         self.dataset = dataset
         self.transform = transform
+
+        # Randomize a slice from -3 to + 3 from the given sliceNr
+        if config_2D.sliceSample is None:
+            sliceNr = 64
+
         self.sliceSample = sliceNr
+
         self.applyMean = applyMean
         self.useMultipleSlices = useMultipleSlices
         self.applyNormalbrain = normalbrain
+        self.applyGammaTransformation = gammaTransform
+
         if normalbrain is True:
-            self.meannormalbrain = getMeanNormalbrain(dataset)
+            self.meannormalbrain = getMeanNormalbrain(dataset, self.sliceSample)
 
     def __getitem__(self, idx):
         scans, disease = self.dataset[idx]
-        
-        if self.applyMean is True and self.sliceSample is not None:
+
+        # Set new sliceSample + [-3, 3]
+
+        sliceSampleNew = self.sliceSample + random.randint(-1,1)
+        print(sliceSampleNew)
+        #sliceSampleNew = self.sliceSample
+
+        if self.applyMean is True and sliceSampleNew is not None:
             shape = np.shape(scans)
             temp = np.zeros((shape[0],shape[1],shape[3]+2))
-            meanImgs = getMeanImages(scans, config_2D.numberOfmeanslices, self.sliceSample)
-            temp[:,:,0] = scans[:,:,self.sliceSample,0]
-            temp[:,:,1] = scans[:,:,self.sliceSample,1]
+            meanImgs = getMeanImages(scans, config_2D.numberOfmeanslices, sliceSampleNew)
+            temp[:,:,0] = scans[:,:,sliceSampleNew,0]
+            temp[:,:,1] = scans[:,:,sliceSampleNew,1]
             temp[:,:,2] = meanImgs[:,:,0]
             temp[:,:,3] = meanImgs[:,:,1]
             scans = temp
 
         # Fetch the samples specified in the configuration file
-        if self.applyMean is False and self.sliceSample is not None:
+        if self.applyMean is False and sliceSampleNew is not None:
 
             if self.useMultipleSlices is True:
                 cropped_scans = crop_center(scans)
                 temp = getMultipleSliceImages(cropped_scans)
                 scans = temp
             else: #else only use one slice
-                temp = scans[:,:,self.sliceSample,:]
+                temp = scans[:,:,sliceSampleNew,:]
                 scans = temp
             
         # Apply transform to take the difference between meannormal brain and currentbrain    
         if self.applyNormalbrain is True:
             scans[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain)
+
+        if self.applyGammaTransformation is not None:
+            rand = (random.random() * self.applyGammaTransformation) + 0.95
+            scans = np.power(scans, rand)
             
         # Apply transform specified in the configuration file
         if self.transform is not None:
@@ -143,16 +161,23 @@ class resize(object):
     return resized object
 
     """
-    def __call__(self, img,sizetobe=224):
-        """
-        Args:
-            img to be noised, assumes the images are between 0, 1
+    def __call__(self, img, sizetobe = 224):
 
-        Returns:
-            img noised
-        
-        """
         img = cv2.resize(img, dsize=(sizetobe,sizetobe))
         
 
         return img
+
+class mirrorImage(object):
+    """ Function to mirror the object around horizontal axis
+
+    return mirrored object
+
+    """
+    def __call__(self, images):
+        # Randomize a value between 0 and 1
+        rand = random.random()
+        if rand > 0.5:
+            images = cv2.flip(images, 0)
+
+        return images

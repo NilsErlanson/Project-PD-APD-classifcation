@@ -2,8 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-
-
 def scroll_slices(sample):
     images = np.squeeze(sample[0])
 
@@ -55,28 +53,29 @@ def get_name(label):
     return name
 
 
-def show_scan(sample,sliceNr=10,show = True):
+def show_scan(sample, sliceNr=10, show = True):
     images = sample[0]
     label = sample[1]
     name = get_name(label)
     img_suvr = images[...,0]
     img_rbf = images[...,1]
+
     fig, axs = plt.subplots(2, 3, figsize=(10,10))
 
-
+    cMap = 'CMRmap'
     #SUVR first row
-    axs[0,0].imshow(img_suvr[:,:,sliceNr],cmap='bone') #SUVr
+    axs[0,0].imshow(img_suvr[:,:,sliceNr],cmap = cMap) #SUVr
     axs[0,0].set_title(['SUVR, Slicenumber: ', sliceNr])
-    axs[0,1].imshow(img_suvr[:,:,sliceNr+40],cmap = 'bone') #SUVr
+    axs[0,1].imshow(img_suvr[:,:,sliceNr+40],cmap = cMap) #SUVr
     axs[0,1].set_title(['suvr, slicenumber: ', sliceNr+40])
-    axs[0,2].imshow(img_suvr[60,:,:],cmap = 'bone')
+    axs[0,2].imshow(img_suvr[60,:,:],cmap = cMap)
     axs[0,2].set_title('rotated')
     #RBF secod row
-    axs[1, 0].imshow(img_rbf[:,:,sliceNr],cmap = 'bone') #rCBF
+    axs[1, 0].imshow(img_rbf[:,:,sliceNr],cmap = cMap) #rCBF
     axs[1, 0].set_title(['rcbf, slicenumber: ', sliceNr])
-    axs[1, 1].imshow(img_rbf[:,:,sliceNr+39],cmap = 'bone') #rCBF
+    axs[1, 1].imshow(img_rbf[:,:,sliceNr+40],cmap = cMap) #rCBF
     axs[1, 1].set_title(['rcbf, slicenumber ', sliceNr+40])
-    axs[1, 2].imshow(img_rbf[60,:,:],cmap = 'bone') #rCBF
+    axs[1, 2].imshow(img_rbf[60,:,:],cmap = cMap) #rCBF
     axs[1, 2].set_title(['rcbf, rotated '])
     
     plt.suptitle(name)

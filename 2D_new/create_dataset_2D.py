@@ -53,7 +53,7 @@ class ScanDataSet(Dataset):
         labels = tmp_df.Label.astype(np.int64) #Integer labels
         one_hot_encode = list()
         for value in labels:
-            letter = [0 for _ in range(0,config_2D.nrOfDifferentDiseases)]
+            letter = [0 for _ in range(0, config_2D.nrOfDifferentDiseases)]
             letter[value] = 1
             one_hot_encode.append(letter)
         diseases = np.array(one_hot_encode)
@@ -110,28 +110,6 @@ def normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_
     images[:,:,:,1] = (images[:,:,:,1] - min_value_rcbf) / (-min_value_rcbf + max_value_rcbf)
 
     return images
-
-# ************************* HELP FUNCTIONS ********************************
-def find_centered_pixel(images):
-    # Find the pixels values which fulfills the specified criteria
-    val = np.max(images[:,:,0:100,0]) * 0.65 
-    # Find the position of the pixels which fulfills the criteria
-    pixel_position  = np.where( images[:,:,0:100,0] > val )
-    # Exctract the positions x,y,z 
-    x = pixel_position[0][:]
-    y = pixel_position[1][:]
-    z = pixel_position[2][:]
-    #Get middle position of the two high intensity areas in the brain, locate x-position
-    threshold = (np.max(x) + np.min(x)) / 2
-    index = x <= threshold
-    xmid = (np.mean(x[index])+np.mean(x[~index]))/2
-    ymid = np.mean(y).astype(int)
-    zmid = np.mean(z).astype(int)
-
-    #Find the position between the high intensity areas in the brain
-    position = np.array([xmid,ymid,zmid]).astype(int)
-
-    return position
 
 # ************************** MAIN FUNCTION **********************************
 if __name__ == "__main__":

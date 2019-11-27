@@ -40,20 +40,34 @@ def scroll_slices(sample, original = False):
 
 def get_name(label):
     
-    if(np.array_equal(label,[1, 0, 0, 0, 0, 0])):
+    if(np.array_equal(label,[1, 0, 0, 0])):
         name = 'Frisk'
-    elif(np.array_equal(label,[0, 1, 0, 0, 0, 0])):
+    elif(np.array_equal(label,[0, 1, 0, 0])):
         name = 'Vaskulär Parkinomism'
-    elif(np.array_equal(label,[0, 0, 1, 0, 0, 0])):
+    elif(np.array_equal(label,[0, 0, 1, 0])):
         name = 'PD'
-    elif(np.array_equal(label,[0, 0, 0, 1, 0, 0])):
-        name = 'Lewy Body Disease'
-    elif(np.array_equal(label,[0, 0, 0, 0, 1, 0])):
-        name = 'FTD'
     else:
-        name = 'NPH'
+        name = 'Lewy Body Disease'
+
     return name
 
+def show_scan_multipleSlices(sample, show = True):
+    images = sample[0]
+    label = sample[1]
+    name = get_name(label)
+
+    fig, axs = plt.subplots(2, 1, figsize=(10,10))
+
+    #SUVR
+    axs[0].imshow(images[0,:,:], cmap='hot')
+    axs[0].set_title(['SUVR'])
+    #RCBF
+    axs[1].imshow(images[1,:,:], cmap = 'hot') 
+    axs[1].set_title(['RCBF'])
+
+    plt.suptitle(name)
+    if(show):
+        plt.show()
 
 def show_scan(sample, original=False, show = True):
     sliceNr_SUVr = 40

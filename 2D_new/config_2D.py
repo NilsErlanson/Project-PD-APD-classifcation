@@ -14,16 +14,18 @@ filetype_rCBF = "rCBF.v"
 
 # For the transformations
 sliceSample = 64
-addMeanImage = False 
+addMeanImage = True 
 numberOfmeanslices = 5
-adddiffNormal= False
-useMultipleSlices = True
+adddiffNormal= True
+useMultipleSlices = False
 cropx = 110
 cropy = 90
+gamma = 0.2
 
 # resent
 transform = TT.Compose([
-    transformations_2D.resize(),
+    #transformations_2D.resize(),
+    transformations_2D.mirrorImage(),
     TT.ToTensor()
 ])
 
@@ -36,7 +38,8 @@ nrOfDifferentDiseases = 4
 #
 # ***** training.py
 #
-USE_CUDA = True # NO = 0, YES = 1
+USE_CUDA = True
+
 epochs = 10
 batchSize = 3
 learning_rate = 0.0001
