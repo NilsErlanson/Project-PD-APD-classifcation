@@ -1,5 +1,5 @@
 #
-# Script which contains the function necessary load the dataset, preprocess it and augment it. 
+# Script which contains the function necessary create/preprocess the dataset 
 # The main-function saves the created datasets into .pickle files that can be loaded from load_dataset.py
 #
 
@@ -42,7 +42,6 @@ class ScanDataSet(Dataset):
         scans, disease = self.samples[idx]
  
         return scans, disease
-
 
     def _init_dataset(self):
         # ***** Read the disease labels from a csv file (saved from the patientlist in the xlms file) *****
@@ -87,25 +86,22 @@ class ScanDataSet(Dataset):
         # Load the whole dataset and save into numpy array and perform cropping and rotation around x-axis
         for nr in range(np.size(listFilesECAT_SUVR)):
             images = np.zeros((np.shape(refImg)[0],np.shape(refImg)[1],np.shape(refImg)[2], 2)) #28 x 128 x 128 x 128 x 2
-
-             #Load the SUVR image
+            
+            #Load the SUVR image
             images[:,:,:,0] = ecat.load(listFilesECAT_SUVR[nr]).get_frame(0)
             #Load the rCBF image
             images[:,:,:,1] = ecat.load(listFilesECAT_rCBF[nr]).get_frame(0)
 
+            """
             # Calculate the min and max values for each image
             min_value_suvr, max_value_suvr = images[:,:,:,0].min(), images[:,:,:,0].max()
             min_value_rcbf, max_value_rcbf = images[:,:,:,1].min(), images[:,:,:,1].max()
-
             # Normalize the image
             normalized_images = normalize_image(images, min_value_suvr, max_value_suvr, min_value_rcbf, max_value_rcbf)
+            """
             
-            # PROVA MINMAXSCALER FROM SKLEARN!
-            
-            #normalized_images = normalize_image(images, 0, 900, 0, 270)
-
             #Append the preprocessed data into samples
-            self.samples.append((normalized_images, diseases[nr,:]))
+            self.samples.append((images, diseases[nr,:]))
 
 
 # Normalizes the images according to the whole datasets mean and standard deviance

@@ -7,9 +7,150 @@ import scipy.ndimage as scp
 import cv2
 import random
 
-def getMultipleSliceImages(scans, sliceSample = None):  
+#To perform normalization
+from sklearn.preprocessing import MinMaxScaler
+
+class ApplyNormalization(Dataset):
+    """
+    Applies normalization to a Dataset
+    """
+    
+    def __init__(self, dataset, max_suvr_values = None, max_rcbf_values = None, trainingset = True):
+        self.samples = []
+        self.max_rcbf_values = max_rcbf_values
+        self.max_suvr_values = max_suvr_values
+
+        self.dataset = dataset
+        self.trainingset = trainingset
+
+        self._init_dataset()
+        
+    def _init_dataset(self):
+        if self.trainingset is True:
+            refImg = self.dataset.__getitem__(0)[0]
+
+            training_images = np.zeros((len(self.dataset), np.shape(refImg)[0], np.shape(refImg)[1], np.shape(refImg)[2],  2))
+
+            # Load all of the data to fit a MinMaxScaler
+            for i in range(len(self.dataset)):
+                #Load the SUVR image
+                training_images[i,:,:,:,0] = self.dataset.__getitem__(i)[0][:,:,:,0]
+                #Load the rCBF image
+                training_images[i,:,:,:,1] = self.dataset.__getitem__(i)[0][:,:,:,1]
+
+            # SUVr max values 0, rCBF max values 1
+            max_values = np.zeros((training_images[:,:,:,:,0].shape[3], 2))
+            # Find the max and min value for each slice
+            for a in range(training_images[:,:,:,:,0].shape[3]):
+                max_values[a,0] = training_images[:,:,:,a,0].max() 
+                max_values[a,1] = training_images[:,:,:,a,1].max() 
+                # Normalize both the images on ONE slice
+                training_images[:,:,:,a,:] = normalize_image(training_images[:,:,:,a,:], max_values[a,0],  max_values[a,1])
+
+
+            # Set the max values attribute
+            self.max_suvr_values = max_values[:,0]
+            self.max_rcbf_values = max_values[:,1]
+
+
+           # Append the normalized data
+            for i in range(len(self.dataset)):
+                # Fetch the disease label
+                disease = self.dataset.__getitem__(i)[1]
+
+                #Append the preprocessed data into samples
+                self.samples.append((training_images[i,:,:,:,:], disease)) 
+            """
+            # Fit the scaler for SUVR
+            temp_suvr = scaled_Images_training[:,:,:,:,0].reshape(nrImages, x * y, z)
+            scaled_images_suvr = self.scaler_suvr.fit_transform(temp_suvr)
+            scaled_Images_training[:,:,:,:,0] = scaled_images_suvr.reshape(nrImages, x, y, z)
+            # Fit the scaler for rCBF
+            temp_rcbf = scaled_Images_training[:,:,:,:,1].reshape(nrImages, x * y, z)
+            scaled_images_rcbf = self.scaler_rcbf.fit_transform(temp_rcbf)
+            scaled_Images_training[:,:,:,:,1] = scaled_images_rcbf.reshape(nrImages, x, y, z)
+
+            # Append the normalized data
+            for i in range(len(self.dataset)):
+                # Fetch the disease label
+                disease = self.dataset.__getitem__(i)[1]
+
+                #Append the preprocessed data into samples
+                self.samples.append((scaled_Images_training[i,:,:,:,:], disease)) 
+
+            """
+        else:
+            refImg = self.dataset.__getitem__(0)[0]
+
+            test_images = np.zeros((len(self.dataset), np.shape(refImg)[0], np.shape(refImg)[1], np.shape(refImg)[2],  2))
+
+            # Load all of the data to fit a MinMaxScaler
+            for i in range(len(self.dataset)):
+                #Load the SUVR image
+                test_images[i,:,:,:,0] = self.dataset.__getitem__(i)[0][:,:,:,0]
+                #Load the rCBF image
+                test_images[i,:,:,:,1] = self.dataset.__getitem__(i)[0][:,:,:,1]
+            
+            for a in range(test_images[:,:,:,:,0].shape[3]):
+                # Normalize both the images on ONE slice
+                test_images[:,:,:,a,:] = normalize_image(test_images[:,:,:,a,:], self.max_suvr_values[a],  self.max_rcbf_values[a])
+
+           # Append the normalized data
+            for i in range(len(self.dataset)):
+                # Fetch the disease label
+                disease = self.dataset.__getitem__(i)[1]
+
+                #Append the preprocessed data into samples
+                self.samples.append((test_images[i,:,:,:,:], disease)) 
+            """
+            # Fit the scaler for SUVR
+            temp_suvr = scaled_Images_test[:,:,:,:,0].reshape(nrImages, x * y, z)
+            scaled_images_suvr = self.scaler_suvr.transform(temp_suvr)
+            scaled_Images_test[:,:,:,:,0] = scaled_images_suvr.reshape(nrImages, x, y, z)
+            # Fit the scaler for rCBF
+            temp_rcbf = scaled_Images_test[:,:,:,:,1].reshape(nrImages, x * y, z)
+            scaled_images_rcbf = self.scaler_rcbf.transform(temp_rcbf)
+            scaled_Images_test[:,:,:,:,1] = scaled_images_rcbf.reshape(nrImages, x, y, z)
+
+            # Append the normalized data
+            for i in range(len(self.dataset)):
+                # Fetch the disease label
+                disease = self.dataset.__getitem__(i)[1]
+
+                print("scaled_Images_test[:,:,:,:,0].min(): ", scaled_Images_test[:,:,:,:,0].min(), " scaled_Images_test[:,:,:,:,0].max()", scaled_Images_test[:,:,:,:,0].max())
+                print("scaled_Images_test[:,:,:,:,1].min(): ", scaled_Images_test[:,:,:,:,1].min(), " scaled_Images_test[:,:,:,:,1].max()", scaled_Images_test[:,:,:,:,1].max())
+
+                #Append the preprocessed data into samples
+                self.samples.append((scaled_Images_test[i,:,:,:,:], disease)) 
+            """
+           
+
+    def __getitem__(self, idx): 
+        scans, disease = self.samples[idx]
+
+        return scans, disease
+
+    def __len__(self):
+        return len(self.samples)
+
+ # Normalizes the images according to the whole datasets mean and standard deviance
+def normalize_image(images, max_value_suvr, max_value_rcbf):
+    images[:,:,:,0] = (images[:,:,:,0]) / (max_value_suvr)
+    images[:,:,:,1] = (images[:,:,:,1]) / (max_value_rcbf)
+
+    return images
+
+def getMultipleSliceImages(scans, sliceSample = None, mirror = True):  
     if sliceSample is None:
         sliceSample = config_2D.sliceSample
+
+    if mirror is True:
+        # Randomize a value between 0 and 1
+        rand = random.random()
+        if rand > 0.5:
+            for i in range(9): #Flip the 9 images to be concenated
+                scans[:,:,sliceSample - 4 + i, 0] = cv2.flip(scans[:,:,sliceSample - 4 + i, 0], 0)
+                scans[:,:,sliceSample - 4 + i, 1] = cv2.flip(scans[:,:,sliceSample - 4 + i, 1], 0)
 
     shape = np.shape(scans)
     #Create a holder for the return images
@@ -25,6 +166,8 @@ def getMultipleSliceImages(scans, sliceSample = None):
     
     multipleImages[:,:,0] = suvr
     multipleImages[:,:,1] = rcbf
+
+
 
     return multipleImages
 
@@ -64,7 +207,7 @@ def getMeanImages(scan, numslices, slice = 64):
     
     return ret
 
-def getMeanNormalbrain(dataset, slicenum = 64):
+def getMeanNormalbrain_rcbf(dataset, slicenum = 67):
     #return the mean brain, the dataset is hardcoded to be normal brains in the range 12,18
     meannormalbrain = np.zeros((128,128)) #store the mean brain of all the normal suvr brains
     counter = 0
@@ -79,6 +222,26 @@ def getMeanNormalbrain(dataset, slicenum = 64):
         meannormalbrain = meannormalbrain/1
     else:
         meannormalbrain = meannormalbrain/(counter)
+
+    return meannormalbrain
+
+def getMeanNormalbrain_suvr(dataset, slicenum = 67):
+    #return the mean brain, the dataset is hardcoded to be normal brains in the range 12,18
+    meannormalbrain = np.zeros((128,128)) #store the mean brain of all the normal suvr brains
+    counter = 0
+    for i in range(len(dataset)): # iteratets through the current dataset and extracts the mean normal brain
+        
+        scan,label = dataset[i]
+        if np.array_equal(label,[1,0,0,0]): #checks if it is a normal brain
+            counter += 1
+            img_suvr = scan[:,:,slicenum,1] #then retrivies normal brain
+            meannormalbrain += img_suvr # and adds
+
+    if counter == 0:
+        meannormalbrain = meannormalbrain / 1
+    else:
+        meannormalbrain = meannormalbrain / (counter)
+
     return meannormalbrain
 
 class ApplyTransform(Dataset):
@@ -92,35 +255,34 @@ class ApplyTransform(Dataset):
 
     """
     
-    def __init__(self, dataset, sliceNr = None, applyMean = False, applyDiffnormal = False, meantrainbrain= None, 
-                 useMultipleSlices = False, gammaTransform = None, transform = None):
+    def __init__(self, dataset, sliceNr = None, applyMean = False, applyDiffnormal = False, meantrainbrain_rcbf = None, meantrainbrain_suvr = None,
+                useMultipleSlices = False, mirrorImage = None, gammaTransform = None, transform = None):
+
         self.dataset = dataset
         self.transform = transform
-
-        # Randomize a slice from -3 to + 3 from the given sliceNr
-        if config_2D.sliceSample is None:
-            sliceNr = 64
-
         self.sliceSample = sliceNr
-
         self.applyMean = applyMean
         self.useMultipleSlices = useMultipleSlices
         self.applyDiffnormal = applyDiffnormal
         self.applyGammaTransformation = gammaTransform
-        self.meantrainbrain = meantrainbrain
+        self.applyMirrorImage = mirrorImage
+        self.meannormalbrain_rcbf = meantrainbrain_rcbf
+        self.meannormalbrain_suvr = meantrainbrain_suvr
 
-        if applyDiffnormal is True:
-            self.meannormalbrain = getMeanNormalbrain(dataset, self.sliceSample)
+        if applyDiffnormal is True and meantrainbrain_rcbf is None and meantrainbrain_suvr is None :
+            self.meannormalbrain_rcbf = getMeanNormalbrain_rcbf(dataset, self.sliceSample)
+            self.meannormalbrain_suvr = getMeanNormalbrain_suvr(dataset, self.sliceSample)
         else:
-            self.meannormalbrain = None
+            self.meannormalbrain_rcbf = meantrainbrain_rcbf
+            self.meannormalbrain_suvr = meantrainbrain_suvr
 
     def __getitem__(self, idx):
         scans, disease = self.dataset[idx]
 
-        # Set new sliceSample + [-3, 3]
+        # Set new sliceSample + [-1, 1]
         sliceSampleNew = self.sliceSample + random.randint(-1,1)
 
-        if self.applyMean is True and sliceSampleNew is not None:
+        if self.applyMean is True and self.sliceSample is not None:
             shape = np.shape(scans)
             temp = np.zeros((shape[0],shape[1],shape[3]+2))
             meanImgs = getMeanImages(scans, config_2D.numberOfmeanslices, sliceSampleNew)
@@ -131,27 +293,50 @@ class ApplyTransform(Dataset):
             scans = temp
 
         # Fetch the samples specified in the configuration file
-        if self.applyMean is False and sliceSampleNew is not None:
+        if self.applyMean is False and self.sliceSample is not None:
 
             if self.useMultipleSlices is True:
                 cropped_scans = crop_center(scans)
-                temp = getMultipleSliceImages(cropped_scans)
+
+                if self.applyMirrorImage is False:
+                    temp = getMultipleSliceImages(cropped_scans, sliceSample = sliceSampleNew, mirror = False)
+                else: 
+                    temp = getMultipleSliceImages(cropped_scans, sliceSample = sliceSampleNew, mirror = True)
+                
                 scans = temp
+
             else: #else only use one slice
                 temp = scans[:,:,sliceSampleNew,:]
                 scans = temp
             
         # Apply transform to take the difference between meannormal brain and currentbrain    
-        if self.applyDiffnormal is True:
-            if self.meantrainbrain is not None: # this is for test data
-                scans[:,:,2] = np.abs(scans[:,:,0]- self.meantrainbrain)
+        if self.applyDiffnormal is True and self.applyMean is True:
+            # RCBF
+            if self.meannormalbrain_rcbf is not None: # this is for test data
+                temp[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain_rcbf)
+            
             else:
-                scans[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain)
+                temp[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain_rcbf)
+
+            # SUVR
+            if self.meannormalbrain_suvr is not None: # this is for test data
+                temp[:,:,3] = np.abs(scans[:,:,1] - self.meannormalbrain_suvr)
+            
+            else:
+                temp[:,:,3] = np.abs(scans[:,:,1] - self.meannormalbrain_suvr)
+
+        if self.applyDiffnormal is True and self.applyMean is False:
+            print("Please set addMeanImage = True in the configuration file")
+            exit()
 
         if self.applyGammaTransformation is not None:
-            rand = (random.random() * self.applyGammaTransformation) + 0.95
-            scans = np.power(scans, rand)
-            
+            #rand = (random.random() * self.applyGammaTransformation) + 0.95
+            #scans = np.power(scans, rand)
+            scans = np.power(scans, self.applyGammaTransformation)
+
+        if self.applyMirrorImage is True and self.useMultipleSlices is False:
+            scans = mirrorImages(scans)
+
         # Apply transform specified in the configuration file
         if self.transform is not None:
             temp = self.transform(scans)
@@ -162,6 +347,8 @@ class ApplyTransform(Dataset):
 
     def __len__(self):
         return len(self.dataset)
+
+
     
 class resize(object):
     """ Function to resize object to given size
@@ -173,8 +360,15 @@ class resize(object):
 
         img = cv2.resize(img, dsize=(sizetobe,sizetobe))
         
-
         return img
+
+def mirrorImages(images):
+    # Randomize a value between 0 and 1
+    rand = random.random()
+    if rand > 0.5:
+        images = cv2.flip(images, 0)
+
+    return images
 
 class mirrorImage(object):
     """ Function to mirror the object around horizontal axis

@@ -1,42 +1,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+def plot_k_fold(train_losses, test_losses):
+    mean_train = np.mean(train_losses, axis=0)
+    mean_test = np.mean(test_losses, axis=0)
 
-def scroll_slices(sample, original = False):
-    images = sample[0]
-    if original is False:
-        images = images.permute(1,2,0)
+    # plot loss
+    plt.figure()
+    iterations = np.arange(1, len(mean_train) + 1)
+    plt.scatter(iterations, mean_train, label = 'mean training loss')
+    plt.scatter(iterations, mean_test, label = 'mean test loss')
+    plt.legend()
+    plt.xlabel('iteration')
+    plt.show()   
 
-    fig, ax = plt.subplots(1, 1)
-    class IndexTracker(object):
-        def __init__(self, ax, X):
-            self.ax = ax
-            ax.set_title('use scroll wheel to navigate images')
-
-            self.X = X
-            rows, cols, self.slices = X.shape
-            self.ind = self.slices//2
-
-            self.im = ax.imshow(self.X[:, :, self.ind])
-            self.update()
-
-        def onscroll(self, event):
-            print("%s %s" % (event.button, event.step))
-            if event.button == 'up':
-                self.ind = (self.ind + 1) % self.slices
-            else:
-                self.ind = (self.ind - 1) % self.slices
-            self.update()
-
-        def update(self):
-            self.im.set_data(self.X[:, :, self.ind])
-            ax.set_ylabel('slice %s' % self.ind)
-            self.im.axes.figure.canvas.draw()
-
-    tracker = IndexTracker(ax,images)
-
-    fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-    plt.show()
+def plot_training_test_loss(training_loss, test_loss):
+    # plot loss
+    plt.figure()
+    iterations = np.arange(1, len(training_loss) + 1)
+    plt.scatter(iterations, training_loss, label='training loss')
+    plt.scatter(iterations, test_loss, label='test loss')
+    plt.legend()
+    plt.xlabel('iteration')
+    plt.show()  
 
 def get_name(label):
     

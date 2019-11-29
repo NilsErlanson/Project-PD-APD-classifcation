@@ -19,7 +19,7 @@ def load_original_dataset():
     return original_dataset
 
 if __name__ == "__main__":
-    original = load_original_dataset()  
+    original_dataset = load_original_dataset()  
 
 
 

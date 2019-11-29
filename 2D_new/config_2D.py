@@ -13,25 +13,24 @@ filetype_SUVR = "1.v"
 filetype_rCBF = "rCBF.v"
 
 # For the transformations
-sliceSample = 64
-addMeanImage = True 
+sliceSample = 67
 numberOfmeanslices = 5
-applydiffnormal = False
+addMeanImage = True 
+applydiffnormal = True
 useMultipleSlices = False
+applyMirrorImage = False
 cropx = 110
 cropy = 90
-gamma = 0.2
+gamma = 1.2
 
 # resent
 transform_train = TT.Compose([
-    transformations_2D.resize(),
-    transformations_2D.mirrorImage(),
+    #transformations_2D.resize(),
     TT.ToTensor()
 ])
 
 transform_test = TT.Compose([
     #transformations_2D.resize(),
-    #transformations_2D.mirrorImage(),
     TT.ToTensor()
 ])
 
