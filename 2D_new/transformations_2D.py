@@ -60,25 +60,7 @@ class ApplyNormalization(Dataset):
 
                 #Append the preprocessed data into samples
                 self.samples.append((training_images[i,:,:,:,:], disease)) 
-            """
-            # Fit the scaler for SUVR
-            temp_suvr = scaled_Images_training[:,:,:,:,0].reshape(nrImages, x * y, z)
-            scaled_images_suvr = self.scaler_suvr.fit_transform(temp_suvr)
-            scaled_Images_training[:,:,:,:,0] = scaled_images_suvr.reshape(nrImages, x, y, z)
-            # Fit the scaler for rCBF
-            temp_rcbf = scaled_Images_training[:,:,:,:,1].reshape(nrImages, x * y, z)
-            scaled_images_rcbf = self.scaler_rcbf.fit_transform(temp_rcbf)
-            scaled_Images_training[:,:,:,:,1] = scaled_images_rcbf.reshape(nrImages, x, y, z)
 
-            # Append the normalized data
-            for i in range(len(self.dataset)):
-                # Fetch the disease label
-                disease = self.dataset.__getitem__(i)[1]
-
-                #Append the preprocessed data into samples
-                self.samples.append((scaled_Images_training[i,:,:,:,:], disease)) 
-
-            """
         else:
             refImg = self.dataset.__getitem__(0)[0]
 
@@ -102,27 +84,7 @@ class ApplyNormalization(Dataset):
 
                 #Append the preprocessed data into samples
                 self.samples.append((test_images[i,:,:,:,:], disease)) 
-            """
-            # Fit the scaler for SUVR
-            temp_suvr = scaled_Images_test[:,:,:,:,0].reshape(nrImages, x * y, z)
-            scaled_images_suvr = self.scaler_suvr.transform(temp_suvr)
-            scaled_Images_test[:,:,:,:,0] = scaled_images_suvr.reshape(nrImages, x, y, z)
-            # Fit the scaler for rCBF
-            temp_rcbf = scaled_Images_test[:,:,:,:,1].reshape(nrImages, x * y, z)
-            scaled_images_rcbf = self.scaler_rcbf.transform(temp_rcbf)
-            scaled_Images_test[:,:,:,:,1] = scaled_images_rcbf.reshape(nrImages, x, y, z)
-
-            # Append the normalized data
-            for i in range(len(self.dataset)):
-                # Fetch the disease label
-                disease = self.dataset.__getitem__(i)[1]
-
-                print("scaled_Images_test[:,:,:,:,0].min(): ", scaled_Images_test[:,:,:,:,0].min(), " scaled_Images_test[:,:,:,:,0].max()", scaled_Images_test[:,:,:,:,0].max())
-                print("scaled_Images_test[:,:,:,:,1].min(): ", scaled_Images_test[:,:,:,:,1].min(), " scaled_Images_test[:,:,:,:,1].max()", scaled_Images_test[:,:,:,:,1].max())
-
-                #Append the preprocessed data into samples
-                self.samples.append((scaled_Images_test[i,:,:,:,:], disease)) 
-            """
+  
            
 
     def __getitem__(self, idx): 
@@ -256,7 +218,7 @@ class ApplyTransform(Dataset):
     """
     
     def __init__(self, dataset, sliceNr = None, applyMean = False, applyDiffnormal = False, meantrainbrain_rcbf = None, meantrainbrain_suvr = None,
-                useMultipleSlices = False, mirrorImage = None, gammaTransform = None, transform = None):
+                useMultipleSlices = False, mirrorImage = None, gammaTransform = None, transform = None, randomSlice = False):
 
         self.dataset = dataset
         self.transform = transform
@@ -268,6 +230,7 @@ class ApplyTransform(Dataset):
         self.applyMirrorImage = mirrorImage
         self.meannormalbrain_rcbf = meantrainbrain_rcbf
         self.meannormalbrain_suvr = meantrainbrain_suvr
+        self.randomSlice = randomSlice
 
         if applyDiffnormal is True and meantrainbrain_rcbf is None and meantrainbrain_suvr is None :
             self.meannormalbrain_rcbf = getMeanNormalbrain_rcbf(dataset, self.sliceSample)
@@ -280,7 +243,10 @@ class ApplyTransform(Dataset):
         scans, disease = self.dataset[idx]
 
         # Set new sliceSample + [-1, 1]
-        sliceSampleNew = self.sliceSample + random.randint(-1,1)
+        if self.randomSlice is True:
+            sliceSampleNew = self.sliceSample + random.randint(-3,3)
+        else:
+            sliceSampleNew = self.sliceSample
 
         if self.applyMean is True and self.sliceSample is not None:
             shape = np.shape(scans)

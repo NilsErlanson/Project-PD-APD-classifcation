@@ -21,7 +21,7 @@ useMultipleSlices = False
 applyMirrorImage = False
 cropx = 110
 cropy = 90
-gamma = 1.2
+gamma = 1.025
 
 # resent
 transform_train = TT.Compose([

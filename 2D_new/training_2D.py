@@ -77,6 +77,115 @@ def training_session(device, model, optimizer, cost_function, train_data, test_d
     
     return model, training_loss, test_loss 
 
+def kfold_v2(device, original_dataset, k = 20):
+    # Create matrix to save the accuracy and the test losses
+    accuracy = np.zeros((len(original_dataset), 3))
+    test_losses = np.zeros((len(original_dataset), epochs * 10))  # there are 
+    train_losses = np.zeros((len(original_dataset), epochs * 10))
+
+    #class_sample_count_original = find_class_sample_count(original_dataset)
+
+    # RANDOMIZE THE ORDER IN THE DATASET, DONE ONCE !
+    indices = np.arange(20)
+    np.random.shuffle(indices)
+    #indices = [0,2,6,13,1,4,7,14,3,5,10,15,9,11,12,16,8,17,18,19]
+    print("The list order before going into k-fold loop: ", indices)
+
+    # Split the data into k-times
+    print("Performing k-fold cross validation...")
+    for j in range(0, len(original_dataset), 4):
+        print(j," ", j+1," ", j+2," ", j+3, "...")
+        print("Testing on: ", indices[j], " ", indices[j+1], " ", indices[j+2], " ", indices[j+3])
+
+        # Split the dataset into training/test, 1-fold validation
+        test_index = [indices[j], indices[j+1], indices[j+2], indices[j+3]]  
+        all_indices = np.linspace(0, len(original_dataset)-1, len(original_dataset)).astype(int)
+        train_indices = np.delete(all_indices,test_index)
+        train_dataset, test_dataset = [Subset(dataset = original_dataset, indices = train_indices),Subset(dataset = original_dataset, indices = test_index)]
+
+        #Count the weights according to the training dataset 
+        class_sample_count = find_class_sample_count(train_dataset)
+
+        weights = 1 / torch.Tensor(class_sample_count)
+        weights = weights.double()
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, num_samples = len(weights)*8, replacement = True)
+
+        # Normalize the training/test datasets
+        train_dataset = ApplyNormalization(train_dataset, None, None, True)
+        test_dataset = ApplyNormalization(test_dataset, train_dataset.max_suvr_values, train_dataset.max_rcbf_values, False)
+
+        # Apply transforms to the training/test datasets
+        train_dataset = ApplyTransform(train_dataset, 
+                                            sliceNr = config_2D.sliceSample, 
+                                            applyMean = config_2D.addMeanImage, 
+                                            applyDiffnormal = config_2D.applydiffnormal,
+                                            meantrainbrain_rcbf = None, 
+                                            meantrainbrain_suvr = None, 
+                                            useMultipleSlices = config_2D.useMultipleSlices, 
+                                            mirrorImage = config_2D.applyMirrorImage, 
+                                            gammaTransform = config_2D.gamma, 
+                                            transform = config_2D.transform_train,
+                                            randomSlice = True)
+
+        meannormalbrain_rcbf = train_dataset.meannormalbrain_rcbf
+        meannormalbrain_suvr = train_dataset.meannormalbrain_suvr
+
+        test_dataset = ApplyTransform(test_dataset, 
+                                        sliceNr = config_2D.sliceSample, 
+                                        applyMean = config_2D.addMeanImage, 
+                                        applyDiffnormal = config_2D.applydiffnormal,
+                                        meantrainbrain_rcbf = config_2D.meannormalbrain_rcbf, 
+                                        meantrainbrain_suvr = config_2D.meannormalbrain_suvr, 
+                                        useMultipleSlices = config_2D.useMultipleSlices, 
+                                        mirrorImage = config_2D.applyMirrorImage, 
+                                        gammaTransform = config_2D.gamma, 
+                                        transform = config_2D.transform_test,
+                                        randomSlice = False)
+
+        # define the data loaders
+        train_data = torch.utils.data.DataLoader(train_dataset, batch_size = config_2D.batchSize, sampler = sampler, drop_last = True)     
+        #train_data = torch.utils.data.DataLoader(train_dataset, batch_size = batchSize, shuffle=True)
+        test_data = torch.utils.data.DataLoader(test_dataset, batch_size = config_2D.batchSize)
+
+        # define the model
+        model = resnet().to(device)
+
+        # define the cost function
+        cost_function = torch.nn.CrossEntropyLoss()
+
+        # define the optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr = config_2D.learning_rate)
+
+        # run training
+        trained_model,train_loss,test_loss = training_session(device, model, optimizer, cost_function, train_data, test_data)
+
+        # Check if the model do the right predictions
+        for x,y in test_data:
+            x = x.float().to(device)
+            #prediction = torch.argmax(F.softmax(trained_model.forward(x), dim=1))
+
+            y = y.float().to(device)
+            #label = torch.max(y,1)[1][0]
+
+            label = torch.max(y,1)[1]
+            probs = F.softmax(trained_model.forward(x), dim = 1)
+
+            for i in range(len(test_index)):
+                prediction = torch.argmax(probs[i], dim=0)
+                print("prediction: ", prediction, "label: ", label[i])
+
+                #Store the result
+                if torch.eq(prediction, label):
+                    accuracy[i + (j * 4),0] = 1
+
+                accuracy[i + (j * 4),1] = prediction
+                accuracy[i + (j * 4),2] = label    
+      
+        #Store a metric for the train/test loss of the training
+        test_losses[j,:] = np.asarray(test_loss)
+        train_losses[j,:] = np.asarray(train_loss)
+
+    return accuracy, train_losses, test_losses
 
 def kfold(device, original_dataset, k = 20):
     # Create matrix to save the accuracy and the test losses
@@ -115,7 +224,8 @@ def kfold(device, original_dataset, k = 20):
                                                             useMultipleSlices = config_2D.useMultipleSlices, 
                                                             mirrorImage = config_2D.applyMirrorImage, 
                                                             gammaTransform = config_2D.gamma, 
-                                                            transform = config_2D.transform_train)
+                                                            transform = config_2D.transform_train,
+                                                            randomSlice = True)
 
         meannormalbrain_rcbf = train_dataset.meannormalbrain_rcbf
         meannormalbrain_suvr = train_dataset.meannormalbrain_suvr
@@ -129,7 +239,8 @@ def kfold(device, original_dataset, k = 20):
                                                             useMultipleSlices = config_2D.useMultipleSlices, 
                                                             mirrorImage = config_2D.applyMirrorImage, 
                                                             gammaTransform = config_2D.gamma, 
-                                                            transform = config_2D.transform_train)
+                                                            transform = config_2D.transform_train,
+                                                            randomSlice = False)
 
         # For unbalanced dataset we create a weighted sampler                       
         class_sample_count = class_sample_count_original.copy()
@@ -257,7 +368,8 @@ if __name__ == "__main__":
                                                         useMultipleSlices = config_2D.useMultipleSlices, 
                                                         mirrorImage = config_2D.applyMirrorImage, 
                                                         gammaTransform = config_2D.gamma, 
-                                                        transform = config_2D.transform_train)
+                                                        transform = config_2D.transform_train,
+                                                        randomSlice = True)
 
     meannormalbrain_rcbf = train_dataset.meannormalbrain_rcbf
     meannormalbrain_suvr = train_dataset.meannormalbrain_suvr
@@ -271,7 +383,8 @@ if __name__ == "__main__":
                                                         useMultipleSlices = config_2D.useMultipleSlices, 
                                                         mirrorImage = config_2D.applyMirrorImage, 
                                                         gammaTransform = config_2D.gamma, 
-                                                        transform = config_2D.transform_test)
+                                                        transform = config_2D.transform_test,
+                                                        randomSlice = False)
     
     # For unbalanced dataset we create a weighted sampler                       
     class_sample_count = find_class_sample_count(train_dataset)
@@ -364,7 +477,8 @@ if __name__ == "__main__":
                                                         useMultipleSlices = config_2D.useMultipleSlices, 
                                                         mirrorImage = config_2D.applyMirrorImage, 
                                                         gammaTransform = config_2D.gamma, 
-                                                        transform = config_2D.transform_train)
+                                                        transform = config_2D.transform_train,
+                                                        randomSlice = False)
     
     from copy import copy
     import cv2
@@ -394,7 +508,7 @@ if __name__ == "__main__":
             axs[i, j].axis('off')
 
             #test2 = axs2[i, j].imshow(sample2[0][1,:,:], cmap = cmap, vmin = 0.005, vmax = 1)
-            axs2[i, j].imshow(sample2[0][1,:,:], cmap = palette, vmin = 0.0005, vmax = 1)  
+            axs2[i, j].imshow(sample2[0][1,:,:], cmap = palette)#, vmin = 0.0005, vmax = 1)  
             axs2[i, j].set_title([name])
             axs2[i, j].axis('off')
 

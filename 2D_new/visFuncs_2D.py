@@ -27,13 +27,13 @@ def plot_training_test_loss(training_loss, test_loss):
 def get_name(label):
     
     if(np.array_equal(label,[1, 0, 0, 0])):
-        name = 'Frisk'
+        name = 'Healthy'
     elif(np.array_equal(label,[0, 1, 0, 0])):
-        name = 'Vaskulär Parkinomism'
+        name = 'VP'
     elif(np.array_equal(label,[0, 0, 1, 0])):
         name = 'PD'
     else:
-        name = 'Lewy Body Disease'
+        name = 'LBD'
 
     return name
 
