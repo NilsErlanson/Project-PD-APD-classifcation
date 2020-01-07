@@ -7,4 +7,8 @@ The repository contains a executable training file
  To run the training file one needs to have data sorted in a folder with the ecat files and corresponding csv file. 
  
  
- write an email to Andreas Lycksam if you want the correct format for the data.
+ write an email to Andreas Lycksam if you want the correct format for the data
+ 
+ ![alt text](https://github.com/NilsErlanson/Project-Alz-Dectetion/blob/master/scan.png)
+
+ 
