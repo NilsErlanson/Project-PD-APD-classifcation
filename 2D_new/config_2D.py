@@ -18,10 +18,9 @@ applydiffnormal = True
 useMultipleSlices = False
 applyMirrorImage = True
 cropx = 110
-cropy = 90
+cropy = 100
 gamma = 1.025
 
-# resent
 transform_train = TT.Compose([
     transformations_2D.resize(),
     TT.ToTensor()
@@ -42,10 +41,10 @@ nrOfDifferentDiseases = 4
 # ***** training.py
 #
 USE_CUDA = True
-
-epochs = 10
-batchSize = 3
-learning_rate = 0.0001
+epochs = 20
+batchSize = 16
+learning_rate = 9.0e-6
+nrAugmentations = 8
 
 #
 # ***** model.py *****
