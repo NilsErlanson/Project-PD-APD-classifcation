@@ -14,23 +14,21 @@ filetype_rCBF = "rCBF.v"
 
 # For the transformations
 sliceSample = 67
-numberOfmeanslices = 5
-addMeanImage = True 
 applydiffnormal = True
 useMultipleSlices = False
-applyMirrorImage = False
+applyMirrorImage = True
 cropx = 110
 cropy = 90
 gamma = 1.025
 
 # resent
 transform_train = TT.Compose([
-    #transformations_2D.resize(),
+    transformations_2D.resize(),
     TT.ToTensor()
 ])
 
 transform_test = TT.Compose([
-    #transformations_2D.resize(),
+    transformations_2D.resize(),
     TT.ToTensor()
 ])
 
@@ -52,7 +50,7 @@ learning_rate = 0.0001
 #
 # ***** model.py *****
 #
-if addMeanImage == False:
+if applydiffnormal == False:
     inChannels = 2
 else:
     inChannels = 4

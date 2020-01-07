@@ -145,29 +145,6 @@ def crop_center(scans, cropx = None, cropy = None):
 
     return scans[starty:starty + cropy, startx:startx + cropx, :]
 
-def getMeanImages(scan, numslices, slice = 64):
-    #returns mean of rcbf and suvr
-    img = scan
-
-    x,y,_,_ = img.shape
-    meansuvr = np.zeros((x, y))
-    meanrcbf = np.zeros((x,y))
-    suvrimg = img[:,:,:,0] # takes out suvr from img
-    rcbfimg = img[:,:,:,1]
-
-
-    for i in range (slice-numslices, slice+numslices):
-        meansuvr += suvrimg[:,:,i]
-        meanrcbf += rcbfimg[:,:,i]
-
-    meanrcbf = meanrcbf/(2*numslices)
-    meansuvr = meansuvr/(2*numslices)
-
-    ret = np.zeros((x,y,2))
-    ret[:,:,0] = meansuvr
-    ret[:,:,1] = meanrcbf
-    
-    return ret
 
 def getMeanNormalbrain_rcbf(dataset, slicenum = 67):
     #return the mean brain, the dataset is hardcoded to be normal brains in the range 12,18
@@ -217,13 +194,12 @@ class ApplyTransform(Dataset):
 
     """
     
-    def __init__(self, dataset, sliceNr = None, applyMean = False, applyDiffnormal = False, meantrainbrain_rcbf = None, meantrainbrain_suvr = None,
+    def __init__(self, dataset, sliceNr = None, applyDiffnormal = False, meantrainbrain_rcbf = None, meantrainbrain_suvr = None,
                 useMultipleSlices = False, mirrorImage = None, gammaTransform = None, transform = None, randomSlice = False):
 
         self.dataset = dataset
         self.transform = transform
         self.sliceSample = sliceNr
-        self.applyMean = applyMean
         self.useMultipleSlices = useMultipleSlices
         self.applyDiffnormal = applyDiffnormal
         self.applyGammaTransformation = gammaTransform
@@ -248,18 +224,28 @@ class ApplyTransform(Dataset):
         else:
             sliceSampleNew = self.sliceSample
 
-        if self.applyMean is True and self.sliceSample is not None:
+        if self.applyDiffnormal is True and self.sliceSample is not None:
             shape = np.shape(scans)
             temp = np.zeros((shape[0],shape[1],shape[3]+2))
-            meanImgs = getMeanImages(scans, config_2D.numberOfmeanslices, sliceSampleNew)
             temp[:,:,0] = scans[:,:,sliceSampleNew,0]
             temp[:,:,1] = scans[:,:,sliceSampleNew,1]
-            temp[:,:,2] = meanImgs[:,:,0]
-            temp[:,:,3] = meanImgs[:,:,1]
+             # RCBF
+            if self.meannormalbrain_rcbf is not None: # this is for test data
+                temp[:,:,2] = np.abs(temp[:,:,0] - self.meannormalbrain_rcbf)
+            
+            else:
+                temp[:,:,2] = np.abs(temp[:,:,0] - self.meannormalbrain_rcbf)
+
+            # SUVR
+            if self.meannormalbrain_suvr is not None: # this is for test data
+                temp[:,:,3] = np.abs(temp[:,:,1] - self.meannormalbrain_suvr)
+            
+            else:
+                temp[:,:,3] = np.abs(temp[:,:,1] - self.meannormalbrain_suvr)
             scans = temp
 
         # Fetch the samples specified in the configuration file
-        if self.applyMean is False and self.sliceSample is not None:
+        if self.applyDiffnormal is False and self.sliceSample is not None:
 
             if self.useMultipleSlices is True:
                 cropped_scans = crop_center(scans)
@@ -275,25 +261,6 @@ class ApplyTransform(Dataset):
                 temp = scans[:,:,sliceSampleNew,:]
                 scans = temp
             
-        # Apply transform to take the difference between meannormal brain and currentbrain    
-        if self.applyDiffnormal is True and self.applyMean is True:
-            # RCBF
-            if self.meannormalbrain_rcbf is not None: # this is for test data
-                temp[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain_rcbf)
-            
-            else:
-                temp[:,:,2] = np.abs(scans[:,:,0] - self.meannormalbrain_rcbf)
-
-            # SUVR
-            if self.meannormalbrain_suvr is not None: # this is for test data
-                temp[:,:,3] = np.abs(scans[:,:,1] - self.meannormalbrain_suvr)
-            
-            else:
-                temp[:,:,3] = np.abs(scans[:,:,1] - self.meannormalbrain_suvr)
-
-        if self.applyDiffnormal is True and self.applyMean is False:
-            print("Please set addMeanImage = True in the configuration file")
-            exit()
 
         if self.applyGammaTransformation is not None:
             #rand = (random.random() * self.applyGammaTransformation) + 0.95

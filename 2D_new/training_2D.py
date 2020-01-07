@@ -111,13 +111,12 @@ def kfold_v2(device, original_dataset, k = 20):
         sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, num_samples = len(weights)*8, replacement = True)
 
         # Normalize the training/test datasets
-        train_dataset = ApplyNormalization(train_dataset, None, None, True)
-        test_dataset = ApplyNormalization(test_dataset, train_dataset.max_suvr_values, train_dataset.max_rcbf_values, False)
+        train_dataset = transformations_2D.ApplyNormalization(train_dataset, None, None, True)
+        test_dataset = transformations_2D.ApplyNormalization(test_dataset, train_dataset.max_suvr_values, train_dataset.max_rcbf_values, False)
 
         # Apply transforms to the training/test datasets
-        train_dataset = ApplyTransform(train_dataset, 
+        train_dataset = transformations_2D.ApplyTransform(train_dataset, 
                                             sliceNr = config_2D.sliceSample, 
-                                            applyMean = config_2D.addMeanImage, 
                                             applyDiffnormal = config_2D.applydiffnormal,
                                             meantrainbrain_rcbf = None, 
                                             meantrainbrain_suvr = None, 
@@ -130,12 +129,11 @@ def kfold_v2(device, original_dataset, k = 20):
         meannormalbrain_rcbf = train_dataset.meannormalbrain_rcbf
         meannormalbrain_suvr = train_dataset.meannormalbrain_suvr
 
-        test_dataset = ApplyTransform(test_dataset, 
+        test_dataset = transformations_2D.ApplyTransform(test_dataset, 
                                         sliceNr = config_2D.sliceSample, 
-                                        applyMean = config_2D.addMeanImage, 
                                         applyDiffnormal = config_2D.applydiffnormal,
-                                        meantrainbrain_rcbf = config_2D.meannormalbrain_rcbf, 
-                                        meantrainbrain_suvr = config_2D.meannormalbrain_suvr, 
+                                        meantrainbrain_rcbf = meannormalbrain_rcbf, 
+                                        meantrainbrain_suvr = meannormalbrain_suvr, 
                                         useMultipleSlices = config_2D.useMultipleSlices, 
                                         mirrorImage = config_2D.applyMirrorImage, 
                                         gammaTransform = config_2D.gamma, 
@@ -217,7 +215,6 @@ def kfold(device, original_dataset, k = 20):
         #Normal plot
         train_dataset = transformations_2D.ApplyTransform(train_dataset, 
                                                             sliceNr = config_2D.sliceSample, 
-                                                            applyMean = config_2D.addMeanImage, 
                                                             applyDiffnormal = config_2D.applydiffnormal,
                                                             meantrainbrain_rcbf = None, 
                                                             meantrainbrain_suvr = None, 
@@ -232,7 +229,6 @@ def kfold(device, original_dataset, k = 20):
 
         test_dataset = transformations_2D.ApplyTransform(test_dataset, 
                                                             sliceNr = config_2D.sliceSample, 
-                                                            applyMean = config_2D.addMeanImage, 
                                                             applyDiffnormal = config_2D.applydiffnormal,
                                                             meantrainbrain_rcbf = meannormalbrain_rcbf, 
                                                             meantrainbrain_suvr = meannormalbrain_suvr, 
@@ -348,7 +344,7 @@ if __name__ == "__main__":
 
     # Load the datasets from the pickle file   
     original_dataset = load_dataset_2D.load_original_dataset()
-    """
+    
     # Split the original dataset into two subsets, training/testing
     train_size = int(0.9* len(original_dataset))
     test_size = len(original_dataset) - train_size
@@ -361,7 +357,7 @@ if __name__ == "__main__":
     # Apply transforms to the training/test datasets
     train_dataset = transformations_2D.ApplyTransform(train_dataset, 
                                                         sliceNr = config_2D.sliceSample, 
-                                                        applyMean = config_2D.addMeanImage, 
+
                                                         applyDiffnormal = config_2D.applydiffnormal,
                                                         meantrainbrain_rcbf = None, 
                                                         meantrainbrain_suvr = None, 
@@ -376,7 +372,6 @@ if __name__ == "__main__":
 
     test_dataset = transformations_2D.ApplyTransform(test_dataset, 
                                                         sliceNr = config_2D.sliceSample, 
-                                                        applyMean = config_2D.addMeanImage, 
                                                         applyDiffnormal = config_2D.applydiffnormal,
                                                         meantrainbrain_rcbf = meannormalbrain_rcbf, 
                                                         meantrainbrain_suvr = meannormalbrain_suvr, 
@@ -418,7 +413,7 @@ if __name__ == "__main__":
     # Validate the robustness of the model
     #accuracy, train_losses, test_losses = kfold(device, original_dataset)
     #print(accuracy)
-    """
+    
 
     """
     # Multiple plots to examine the data
@@ -464,13 +459,13 @@ if __name__ == "__main__":
 
     plt.show()
     """
+    """
     # Normalize the training/test datasets
     original_dataset2 = transformations_2D.ApplyNormalization(original_dataset, None, None, True)
     
     # Apply transforms to the training/test datasets
     original_dataset2 = transformations_2D.ApplyTransform(original_dataset2, 
                                                         sliceNr = config_2D.sliceSample, 
-                                                        applyMean = config_2D.addMeanImage, 
                                                         applyDiffnormal = config_2D.applydiffnormal,
                                                         meantrainbrain_rcbf = None, 
                                                         meantrainbrain_suvr = None, 
@@ -516,17 +511,17 @@ if __name__ == "__main__":
             #images[0,:,:] = cv2.flip(images[0,:,:], 0)
             #images[1,:,:] = cv2.flip(images[1,:,:], 0)
 
-            axs3[i, j].imshow(sample2[0][2,:,:], cmap = palette, vmin = 0.0005, vmax = 1)  
-            axs3[i, j].set_title([name])
-            axs3[i, j].axis('off')
+            # axs3[i, j].imshow(sample2[0][2,:,:], cmap = palette, vmin = 0.0005, vmax = 1)  
+            # axs3[i, j].set_title([name])
+            # axs3[i, j].axis('off')
 
-            #test2 = axs2[i, j].imshow(sample2[0][1,:,:], cmap = cmap, vmin = 0.005, vmax = 1)
-            axs4[i, j].imshow(sample2[0][3,:,:], cmap = palette, vmin = 0.0005, vmax = 1)  
-            axs4[i, j].set_title([name])
-            axs4[i, j].axis('off')    
+            # #test2 = axs2[i, j].imshow(sample2[0][1,:,:], cmap = cmap, vmin = 0.005, vmax = 1)
+            # axs4[i, j].imshow(sample2[0][3,:,:], cmap = palette, vmin = 0.0005, vmax = 1)  
+            # axs4[i, j].set_title([name])
+            # axs4[i, j].axis('off')    
 
     plt.show()
-
+    """
 
     """
     # plot to save for the report
