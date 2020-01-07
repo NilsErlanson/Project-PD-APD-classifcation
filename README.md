@@ -9,6 +9,6 @@ The repository contains a executable training file
  
  write an email to Andreas Lycksam if you want the correct format for the data
  
- ![alt text](https://github.com/NilsErlanson/Project-Alz-Dectetion/blob/master/scan.png)
+ ![alt text](https://github.com/NilsErlanson/Project-Alz-Dectetion/blob/master/csv.png)
 
  
