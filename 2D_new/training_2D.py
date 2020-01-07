@@ -16,8 +16,7 @@ import pandas as pd
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, DataLoader, random_split, Subset
-
+from torch.utils.data import Dataset, DataLoader, random_split, Subset  
 
 def training_session(device, model, optimizer, cost_function, train_data, test_data):
     print("Training...")
@@ -330,6 +329,5 @@ if __name__ == "__main__":
     """
     # Validate the robustness of the model
     accuracy, train_losses, test_losses = kfold(device, original_dataset)
-    print("Accuracy ", accuracy)
-    #print(accuracy)
+    print("Accuracy: ", sum(accuracy[:,])[0] / 20, "%", " total number of correct predictions: ", sum(accuracy[:,])[0] )
     
