@@ -1,12 +1,7 @@
 # Project-Alz-Dectetion
-Repository for the project, detecting brain diseases. This project was limited due the small amount amount data, therefore many of the implemented solutions are built around the number of data points in the project.
+Repository for the project, detecting brain diseases using PET-scans from the Uppsala University hospital. This project was limited due the small amount amount data, therefore many of the implemented solutions are built around the number of data points in the project. In order to execute the training.py file the data needs to be created, by running create_dataset.py
 
-The repository contains a executable training file
 
-## Requirements
- To run the training file one needs to have data sorted in a folder with the ecat files and corresponding csv file. 
- 
- 
- write an email to Andreas Lycksam if you want the correct format for the data
- 
+## create_dataset.py
+ To run the create_dataset script one needs to have data sorted in a folder with the ecat files and corresponding csv file. Where the name of the ecat folders are the same as the csv files.
  ![](https://github.com/NilsErlanson/Project-Alz-Dectetion/blob/master/csv.png )
