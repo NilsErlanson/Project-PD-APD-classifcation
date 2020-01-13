@@ -1,4 +1,4 @@
-# Project-Alz-Dectetion
+# Project-neurodegenerative-diseases-classification
 Repository for the project, detecting brain diseases using PET-scans from the Uppsala University hospital. This project was limited due the small amount amount data, therefore many of the implemented solutions are built around the number of data points in the project. In order to execute the training.py file the data needs to be created, by running create_dataset.py
 
 
