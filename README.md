@@ -3,5 +3,5 @@ Repository for the project, detecting brain diseases using PET-scans from the Up
 
 
 ## create_dataset.py
- To run the create_dataset script one needs to have data sorted in a folder with the ecat files and corresponding csv file. Where the name of the ecat folders are the same as the csv files.
+ To run the create_dataset script one needs to have data sorted in a folder with the ecat files and corresponding csv file. Where the name of the ecat folders are the same as the ID in the csv files.
  ![](https://github.com/NilsErlanson/Project-Alz-Dectetion/blob/master/csv.png )
